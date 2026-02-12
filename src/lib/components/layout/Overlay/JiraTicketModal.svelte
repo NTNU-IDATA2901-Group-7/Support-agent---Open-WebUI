@@ -15,10 +15,9 @@
 	let errors: { [key: string]: string } = {};
 
 	const urgencyOptions = [
-		{ value: 'low', label: 'Low' },
-		{ value: 'medium', label: 'Medium' },
-		{ value: 'high', label: 'High' },
-		{ value: 'critical', label: 'Critical' }
+		{ value: 'A', label: 'A' },
+		{ value: 'B', label: 'B' },
+		{ value: 'C', label: 'C' } 
 	];
 
 	function validateForm(): boolean {
@@ -82,10 +81,12 @@
 </script>
 
 {#if show}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-		<div class="w-full max-w-2xl rounded-lg bg-white dark:bg-gray-900 shadow-xl">
+	<div class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4">
+
+
+		<div class="w-full max-w-2xl rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-300 dark:border-gray-800 overflow-hidden">
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 p-6">
+			<div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 p-6">
 				<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Create JIRA Ticket</h2>
 				<button
 					on:click={handleCancel}
@@ -107,7 +108,7 @@
 						type="text"
 						bind:value={title}
 						placeholder="Describe the issue briefly"
-						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
 					/>
 					{#if errors.title}
 						<p class="mt-1 text-sm text-red-500">{errors.title}</p>
@@ -124,7 +125,7 @@
 						bind:value={description}
 						placeholder="Provide detailed information about the issue"
 						rows="5"
-						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-colors"
+						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-colors"
 					/>
 					{#if errors.description}
 						<p class="mt-1 text-sm text-red-500">{errors.description}</p>
@@ -139,7 +140,7 @@
 					<select
 						id="urgency"
 						bind:value={urgency}
-						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
 					>
 						{#each urgencyOptions as option}
 							<option value={option.value}>{option.label}</option>
@@ -157,7 +158,7 @@
 						type="text"
 						bind:value={affectedComponents}
 						placeholder="e.g., Backend, Frontend, Database (comma-separated)"
-						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
 					/>
 					{#if errors.affectedComponents}
 						<p class="mt-1 text-sm text-red-500">{errors.affectedComponents}</p>
@@ -171,7 +172,7 @@
 					</label>
 					<div class="flex items-center gap-2 mb-3">
 						<label
-							class="flex-1 flex items-center justify-center px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+							class="flex-1 flex items-center justify-center px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-800 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
 						>
 							<span class="text-sm font-medium text-gray-700 dark:text-gray-300">Choose files</span>
 							<input
@@ -207,11 +208,11 @@
 			</form>
 
 			<!-- Footer -->
-			<div class="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700 p-6">
+			<div class="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-800 p-6">
 				<button
 					type="button"
 					on:click={handleCancel}
-					class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+					class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
 				>
 					Cancel
 				</button>

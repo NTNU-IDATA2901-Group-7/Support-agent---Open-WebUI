@@ -90,7 +90,7 @@
 	import { goto } from '$app/navigation';
 	import InputModal from '../common/InputModal.svelte';
 	import Expand from '../icons/Expand.svelte';
-	import JiraTicketModal from './MessageInput/JiraTicketModal.svelte';
+	import JiraTicketModal from '../layout/Overlay/JiraTicketModal.svelte';
 
 	const i18n = getContext('i18n');
 
