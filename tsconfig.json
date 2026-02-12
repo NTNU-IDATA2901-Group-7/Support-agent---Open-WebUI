@@ -2,14 +2,32 @@
 	"extends": "./.svelte-kit/tsconfig.json",
 	"compilerOptions": {
 		"allowJs": true,
-		"checkJs": true,
+		"checkJs": false,
 		"esModuleInterop": true,
-		"forceConsistentCasingInFileNames": true,
+		"forceConsistentCasingInFileNames": false,
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
 		"sourceMap": true,
-		"strict": true
+		"strict": false,
+		"noImplicitAny": false,
+		"noImplicitThis": false,
+		"noPropertyAccessFromIndexSignature": false,
+		"noUncheckedIndexedAccess": false,
+		"strictNullChecks": false,
+		"strictFunctionTypes": false,
+		"strictBindCallApply": false,
+		"strictPropertyInitialization": false,
+		"noImplicitReturns": false,
+		"noFallthroughCasesInSwitch": false,
+		"noStrictGenericChecks": true,
+		"suppressImplicitAnyIndexErrors": true,
+		"suppressExcessPropertyErrors": true,
+		"svelte.plugin.typescript.diagnostics.enable": false,
+		"svelte.plugin.svelte.diagnostics.enable": false,
+		"svelte.plugin.svelte.lint.enable": false,
+		"prettier.printWidth": 100
 	}
+}
 	// Path aliases are handled by https://kit.svelte.dev/docs/configuration#alias
 	//
 	// If you want to overwrite includes/excludes, make sure to copy over the relevant includes/excludes

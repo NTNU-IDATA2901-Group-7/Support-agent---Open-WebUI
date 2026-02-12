@@ -5,7 +5,11 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
 	plugins: [
-		sveltekit(),
+		sveltekit({
+			compilerOptions: {
+				dev: true
+			}
+		}),
 		viteStaticCopy({
 			targets: [
 				{

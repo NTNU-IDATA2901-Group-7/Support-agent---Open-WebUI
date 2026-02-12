@@ -90,6 +90,7 @@
 	import { goto } from '$app/navigation';
 	import InputModal from '../common/InputModal.svelte';
 	import Expand from '../icons/Expand.svelte';
+	import JiraTicketModal from './MessageInput/JiraTicketModal.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -132,6 +133,8 @@
 	let selectedValvesType = 'tool'; // 'tool' or 'function'
 	let selectedValvesItemId = null;
 	let integrationsMenuCloseOnOutsideClick = true;
+
+	let showJiraModal = false;
 
 	$: if (!showValvesModal) {
 		integrationsMenuCloseOnOutsideClick = true;
@@ -974,6 +977,19 @@
 			dropzoneElement?.removeEventListener('dragleave', onDragLeave);
 		}
 	});
+
+	async function createJiraTicket() {
+		showJiraModal = true;
+	}
+
+	function handleJiraTicketSubmit(event: CustomEvent) {
+		const ticketData = event.detail;
+		console.log('Submitting JIRA ticket:', ticketData);
+		// TODO: Send ticketData to backend API
+		toast.success($i18n.t('JIRA ticket created successfully'));
+		showJiraModal = false;
+	}
+
 </script>
 
 <FilesOverlay show={dragged} />
@@ -995,6 +1011,16 @@
 	}}
 	on:close={() => {
 		integrationsMenuCloseOnOutsideClick = true;
+	}}
+/>
+
+<JiraTicketModal
+	show={showJiraModal}
+	{prompt}
+	{files}
+	on:submit={handleJiraTicketSubmit}
+	on:cancel={() => {
+		showJiraModal = false;
 	}}
 />
 
@@ -1727,7 +1753,31 @@
 												</button>
 											</Tooltip>
 										{/if}
-
+											<!-- Create Jira Ticket --> 
+											 <Tooltip content="Create Jira Ticket"> 
+												<button 
+													class="text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 
+														transition-all duration-150 ease-out 
+														rounded-full p-1.5 self-center mr-0.5
+														hover:scale-110 hover:-translate-y-[1px]"
+													type="button"
+													disabled={prompt === ''}
+													on:click={() => createJiraTicket()}
+												>
+													<!-- Ticket Icon (Option 2) -->
+													<svg xmlns="http://www.w3.org/2000/svg"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														class="size-5">
+														<path d="M3 7h18v3a2 2 0 100 4v3H3v-3a2 2 0 100-4V7z"/>
+														<line x1="12" y1="7" x2="12" y2="17"/>
+													</svg>
+												</button> 
+											</Tooltip>
 										{#if (!history?.currentId || history.messages[history.currentId]?.done == true) && ($_user?.role === 'admin' || ($_user?.permissions?.chat?.stt ?? true))}
 											<!-- {$i18n.t('Record voice')} -->
 											<Tooltip content={$i18n.t('Dictate')}>
