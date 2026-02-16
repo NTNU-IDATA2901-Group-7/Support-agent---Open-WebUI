@@ -185,6 +185,10 @@ select {
 	@apply bg-gray-850 text-white;
 }
 
+.dark select option:hover {
+}
+
+
 @keyframes shimmer {
 	0% {
 		background-position: 200% 0;

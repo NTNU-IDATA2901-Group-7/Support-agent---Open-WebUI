@@ -1761,7 +1761,6 @@
 														rounded-full p-1.5 self-center mr-0.5
 														hover:scale-110 hover:-translate-y-[1px]"
 													type="button"
-													disabled={prompt === ''}
 													on:click={() => createJiraTicket()}
 												>
 													<!-- Ticket Icon (Option 2) -->
