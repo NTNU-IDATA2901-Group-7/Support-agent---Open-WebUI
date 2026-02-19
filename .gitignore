@@ -311,5 +311,10 @@ cypress/videos
 cypress/screenshots
 .vscode/settings.json
 
-# vim-jukit artifacts
-.jukit/
+# ADDED BY GROUP 7
+.DS_Store
+.jukit
+.envrc 
+.direnv
+.venv
+venv
