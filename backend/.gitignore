@@ -9,4 +9,6 @@ Pipfile
 !/data
 /data/*
 /open_webui/data/*
+.direnv
+.envrc
 .webui_secret_key
