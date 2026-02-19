@@ -311,9 +311,15 @@ cypress/videos
 cypress/screenshots
 .vscode/settings.json
 
+# -----------------
 # ADDED BY GROUP 7
+# -----------------
+
+# Local system files
 .DS_Store
 .jukit
+
+# Virtual environments
 .envrc 
 .direnv
 .venv
