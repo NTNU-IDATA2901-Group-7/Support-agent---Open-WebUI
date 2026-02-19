@@ -324,3 +324,6 @@ cypress/screenshots
 .direnv
 .venv
 venv
+
+# vim-jukit artifacts
+.jukit/
