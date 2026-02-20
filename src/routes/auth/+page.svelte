@@ -5,11 +5,8 @@
 	import { toast } from 'svelte-sonner';
 
 	import { onMount, getContext, tick } from 'svelte';
-<<<<<<< HEAD
-=======
 	import type { Readable } from 'svelte/store';
 	import type { i18n as i18nType } from 'i18next';
->>>>>>> origin/main
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 
@@ -32,11 +29,7 @@
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import { redirect } from '@sveltejs/kit';
 
-<<<<<<< HEAD
-	const i18n = getContext('i18n');
-=======
 	const i18n = getContext<Readable<i18nType>>('i18n');
->>>>>>> origin/main
 
 	let loaded = false;
 
@@ -421,8 +414,6 @@
 										{/if}
 									{/if}
 								</div>
-<<<<<<< HEAD
-=======
 
 								<!-- Always-visible test Microsoft button (temporary) -->
 								<div class="mt-4 w-full">
@@ -442,7 +433,6 @@
 									</button>
 								</div>
 
->>>>>>> origin/main
 							</form>
 
 							{#if Object.keys($config?.oauth?.providers ?? {}).length > 0}
