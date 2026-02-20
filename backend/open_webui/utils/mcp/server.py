@@ -148,3 +148,79 @@ async def handle_list_tools() -> list[Tool]:
         ),]
 
 
+# ============================================================================
+# TOOL EXECUTION ROUTER
+# ============================================================================
+
+@server.call_tool()
+async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    """
+    Route tool calls to implementations and format results.
+    """
+
+    log.info(f"🔧 MCP Tool called: {name}")
+    log.debug(f"Arguments for MCP tools {name}: {arguments}")
+
+    try:
+        # ==================== JIRA TOOLS ====================
+
+        if name == "get_jira_ticket_details_by_key":
+            result = get_jira_ticket_details_by_key(
+                ticket_key=arguments["ticket_key"]
+            )
+            return [TextContent(
+                type="text",
+                text=format_jira_ticket_details(result))]
+
+        elif name == "search_jira_tickets_by_jql":
+            result = search_jira_tickets_by_jql(
+                jql_query=arguments["jql_query"],
+                maxResults=arguments.get("maxResults", 10)
+            )
+            return [TextContent(
+                type="text",
+                text=format_jql_search_results(result)
+            )]
+
+        # ==================== RAG TOOLS ====================
+
+        elif name == "search_vector_db_for_similar_jira_tickets":
+            result = search_vector_db_for_similar_jira_tickets(
+                search_text=arguments["search_text"],
+                top_k=arguments.get("top_k", 5),
+                similarity_cutoff=arguments.get("similarity_cutoff", 0.5)
+            )
+            return [TextContent(
+                type="text",
+                text=format_similar_jira_ticket_search_results(result)
+        )]
+
+        # ==================== ERROR HANDLING ====================
+
+        else:
+            raise ValueError(f"Unknown tool: {name}")
+
+    except Exception as e:
+        log.exception(f"Error executing {name}")
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+# ============================================================================
+# SERVER STARTUP
+# ============================================================================
+
+async def main():
+    """Start the MCP server"""
+    log.info("🚀 Starting Support Agent MCP Server...")
+    log.info("📡 Waiting for connections from Open-WebUI...")
+
+    async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
+        # create_initialization_options() handles initialization automatically
+        await server.run(
+            read_stream,
+            write_stream,
+            server.create_initialization_options()
+        )
+
+if __name__ == "__main__":
+    asyncio.run(main())
