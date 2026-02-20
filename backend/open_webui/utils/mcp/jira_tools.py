@@ -72,6 +72,53 @@ def search_tickets_by_jql(jql_query: str, maxResults: int = 10) -> dict[str, lis
 
 
 
+# TODO: Add logging
+def get_ticket_details_jira(issue_key: str) -> dict[str, dict[str, str]]:
+    """
+    Fetches the full details of a specific ticket.
+
+    Args:
+        issue_key (str): The Jira issue key (e.g., "TT-123").
+
+    Returns:
+        dict[str, str]: A dictionary with detailed ticket info:
+            - key (str): The Jira issue key (e.g., "TT-123").
+            - summary (str): The summary/title of the ticket.
+            - description (str): The description text of the ticket.
+            - status (str): The current status of the ticket (e.g., "To Do").
+            - priority (str): The priority of the ticket (e.g., "High", "Medium").
+            - assignee (str): Name and email of the assigned user, or "Unassigned".
+            - created (str): Timestamp when the ticket was created.
+
+    Raises:
+        RuntimeError: If the ticket cannot be fetched.
+    """
+    try:
+        issue = jira_client.issue(issue_key)
+    except JIRAError as e:
+        log.error(f"Failed to fetch ticket {issue_key}: {e.status_code} - {e.text}")
+        raise RuntimeError(f"Failed to fetch ticket {issue_key}: {e.status_code}")
+
+    fields = issue.fields
+
+    assignee_obj = fields.assignee
+    if assignee_obj:
+        assignee_info = f"{assignee_obj.displayName} ({assignee_obj.emailAddress})"
+    else:
+        assignee_info = "Unassigned"
+
+    
+    result =  {
+        "key": issue.key,
+        "summary": fields.summary or "No summary",
+        "description": fields.description or "",
+        "status": getattr(fields.status, "name", "Unknown status"),
+        "priority": getattr(fields.priority, "name", "None"),
+        "assignee": assignee_info,
+        "created": getattr(fields, "created", "Unknown")
+    }
+
+    return {"ticket": result}
 
 
 
