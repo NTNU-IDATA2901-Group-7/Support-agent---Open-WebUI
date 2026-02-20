@@ -1,3 +1,9 @@
+"""
+RAG Tools Implementation
+
+Imported by MCP server.
+"""
+
 import logging
 from llama_index.core import VectorStoreIndex
 from llama_index.core.postprocessor import SimilarityPostprocessor
@@ -27,6 +33,7 @@ index = VectorStoreIndex.from_vector_store(vector_store)
 # TODO:
 # Add LLM ReRank: https://developers.llamaindex.ai/python/framework/module_guides/querying/node_postprocessors/node_postprocessors/#llm-rerank
 # Test similarity_cutoff
+# Add collection_name parameter
 def search_vector_db_for_similar_jira_tickets(
         search_text: str,
         top_k: int = 5,
@@ -52,7 +59,7 @@ def search_vector_db_for_similar_jira_tickets(
     log.info(f"Performing vector search via LlamaIndex for search-text: '{search_text}'")
 
     # Initialize retriever index - fetches top_k results
-    retriever = index.as_retriever(similarity_top_k=top_k, similarity_cutoff=0.5)
+    retriever = index.as_retriever(similarity_top_k=top_k)
 
     # Search Qdrant
     try:
@@ -72,8 +79,8 @@ def search_vector_db_for_similar_jira_tickets(
         """metadata: key, summary, status, assignee etc - the fields entered when upserting the vectors to the vector DB"""
         metadata = res.node.metadata or {} 
         formatted.append({
+            **metadata, # ** to flatten the metadata dict
             "score": res.score,
-            **metadata, # ** to flatten the metadata object
         })
 
     log.info(f"Vector search returned top {len(formatted)} results")

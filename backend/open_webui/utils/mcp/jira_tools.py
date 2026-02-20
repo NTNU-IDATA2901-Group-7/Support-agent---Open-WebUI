@@ -18,7 +18,7 @@ jira_client = JIRA(
 
 
 # TODO: Test if LLM can handle dynamic jql_query param or if it needs to be split into separate fields
-def search_tickets_by_jql(jql_query: str, maxResults: int = 10) -> dict[str, list[dict[str, str]]]:
+def search_jira_tickets_by_jql(jql_query: str, maxResults: int = 10) -> dict[str, list[dict[str, str]]]:
     """
     Runs a Jira Query Language (JQL) search and returns a structured list of tickets.
 
@@ -72,8 +72,8 @@ def search_tickets_by_jql(jql_query: str, maxResults: int = 10) -> dict[str, lis
 
 
 
-# TODO: Add logging
-def get_ticket_details_jira(issue_key: str) -> dict[str, dict[str, str]]:
+# TODO: Add better logging
+def get_jira_ticket_details_by_key(ticket_key: str) -> dict[str, dict[str, str]]:
     """
     Fetches the full details of a specific ticket.
 
@@ -94,10 +94,10 @@ def get_ticket_details_jira(issue_key: str) -> dict[str, dict[str, str]]:
         RuntimeError: If the ticket cannot be fetched.
     """
     try:
-        issue = jira_client.issue(issue_key)
+        issue = jira_client.issue(ticket_key)
     except JIRAError as e:
-        log.error(f"Failed to fetch ticket {issue_key}: {e.status_code} - {e.text}")
-        raise RuntimeError(f"Failed to fetch ticket {issue_key}: {e.status_code}")
+        log.error(f"Failed to fetch ticket {ticket_key}: {e.status_code} - {e.text}")
+        raise RuntimeError(f"Failed to fetch ticket {ticket_key}: {e.status_code}")
 
     fields = issue.fields
 
@@ -106,7 +106,6 @@ def get_ticket_details_jira(issue_key: str) -> dict[str, dict[str, str]]:
         assignee_info = f"{assignee_obj.displayName} ({assignee_obj.emailAddress})"
     else:
         assignee_info = "Unassigned"
-
     
     result =  {
         "key": issue.key,
