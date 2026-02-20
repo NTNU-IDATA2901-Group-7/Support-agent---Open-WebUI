@@ -1,23 +1,45 @@
 import logging
-from sentence_transformers import SentenceTransformer
+from llama_index.core import VectorStoreIndex
+from llama_index.core.postprocessor import SimilarityPostprocessor
+from llama_index.vector_stores.qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
-client = QdrantClient(host="localhost", port=6333)
-model = SentenceTransformer('all-MiniLM-L6-v2')
+# ------------------------------------------------------------------
+# ---------------------- Setup -------------------------------------
+
 log = logging.getLogger(__name__)
 
+# Setup Qdrant client
+qdrant_client = QdrantClient(host="localhost", port=6333)
+vector_store = QdrantVectorStore(
+    qdrant_client=qdrant_client,
+    collection_name="jira_collection",
+)
+
+
+# Initialize an index - a "wrapper" around the vector store - can generate retriever, query engines
+# etc.
+index = VectorStoreIndex.from_vector_store(vector_store)
+
+# ------------------------------------------------------------------
+# ---------------------- MCP Tools ---------------------------------
+
+# TODO:
+# Add LLM ReRank: https://developers.llamaindex.ai/python/framework/module_guides/querying/node_postprocessors/node_postprocessors/#llm-rerank
+# Test similarity_cutoff
 def search_vector_db_for_similar_jira_tickets(
-        query_text: str,
-        collection_name: str = "jira_collection",
-        limit: int = 3
+        search_text: str,
+        top_k: int = 5,
+        similarity_cutoff: float = 0.5,
     ) -> dict[str, list[dict[str, str | float]]]:
     """
-    Searches a Qdrant collection for Jira tickets semantically similar to the query text.
+    Uses LlamaIndex to search a Qdrant collection for Jira tickets semantically similar to the
+    search-text.
 
     Args:
-        query_text (str): Natural language query to search for.
-        collection_name (str, optional): Name of the Qdrant collection. Defaults to "jira_collection".
-        limit (int, optional): Maximum number of results to return. Defaults to 3.
+        search_text (str): Natural language query to search for.
+        top_k (int, optional): Number of results to return. Defaults to 5.
+        similarity_cutoff (float, optional): The threshold at which search results are discarded.
 
     Returns:
         dict[str, list[dict[str, str | float]]]: Dictionary with a single key "results",
@@ -27,19 +49,19 @@ def search_vector_db_for_similar_jira_tickets(
                 - score (float): Similarity score from Qdrant.
                 - payload (dict): Full payload stored in Qdrant.
     """
-    log.info(f"Performing vector search for query text: '{query_text}'")
+    log.info(f"Performing vector search via LlamaIndex for search-text: '{search_text}'")
 
-    # Convert the user's question into a vector
-    query_vector = model.encode(query_text).tolist()
+    # Initialize retriever index - fetches top_k results
+    retriever = index.as_retriever(similarity_top_k=top_k, similarity_cutoff=0.5)
 
+    # Search Qdrant
     try:
-        # Search Qdrant
-        results = client.query_points(
-            collection_name=collection_name,
-            query=query_vector,
-            limit=limit,
-        ).points
-
+        # Retrieve results
+        results = retriever.retrieve(search_text)
+        # Apply similarity cutoff filter
+        if similarity_cutoff > 0:
+            postprocessor = SimilarityPostprocessor(similarity_cutoff=similarity_cutoff)
+            results = postprocessor.postprocess_nodes(results)
     except Exception as e:
         log.exception(f"Vector search failed: {e}")
         raise RuntimeError("Vector search failed")
@@ -47,12 +69,11 @@ def search_vector_db_for_similar_jira_tickets(
     # Format results
     formatted = []
     for res in results:
-        payload = res.payload or {}
+        """metadata: key, summary, status, assignee etc - the fields entered when upserting the vectors to the vector DB"""
+        metadata = res.node.metadata or {} 
         formatted.append({
-            "key": payload.get("key", "Unknown"),
-            "summary": payload.get("summary", ""),
             "score": res.score,
-            "payload": payload
+            **metadata, # ** to flatten the metadata object
         })
 
     log.info(f"Vector search returned top {len(formatted)} results")
