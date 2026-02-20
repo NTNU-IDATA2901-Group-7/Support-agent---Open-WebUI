@@ -5,6 +5,11 @@
 	import { toast } from 'svelte-sonner';
 
 	import { onMount, getContext, tick } from 'svelte';
+<<<<<<< HEAD
+=======
+	import type { Readable } from 'svelte/store';
+	import type { i18n as i18nType } from 'i18next';
+>>>>>>> origin/main
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 
@@ -27,7 +32,11 @@
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import { redirect } from '@sveltejs/kit';
 
+<<<<<<< HEAD
 	const i18n = getContext('i18n');
+=======
+	const i18n = getContext<Readable<i18nType>>('i18n');
+>>>>>>> origin/main
 
 	let loaded = false;
 
@@ -412,6 +421,28 @@
 										{/if}
 									{/if}
 								</div>
+<<<<<<< HEAD
+=======
+
+								<!-- Always-visible test Microsoft button (temporary) -->
+								<div class="mt-4 w-full">
+									<hr class="w-full h-px my-4 border-0 dark:bg-gray-100/10 bg-gray-700/10" />
+									<div class="text-center mb-3 text-sm text-gray-600 dark:text-gray-400">{$i18n.t('or')}</div>
+									<button
+										class="flex justify-center items-center w-full rounded-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white transition text-sm font-medium"
+										on:click={() => (window.location.href = `${WEBUI_BASE_URL}/oauth/microsoft/login`)}
+									>
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 21" class="size-6 mr-3">
+											<rect x="1" y="1" width="9" height="9" fill="#f25022" />
+											<rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+											<rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+											<rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+										</svg>
+										<span>{$i18n.t('Continue with Microsoft')}</span>
+									</button>
+								</div>
+
+>>>>>>> origin/main
 							</form>
 
 							{#if Object.keys($config?.oauth?.providers ?? {}).length > 0}
