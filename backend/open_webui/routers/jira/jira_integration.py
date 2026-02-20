@@ -1,8 +1,5 @@
 
-# from jira import JIRA
-# from jira.client import cloud_api
 import requests
-from typing import List, Dict #, Any , Optional
 import logging
 
 log = logging.getLogger(__name__)
@@ -43,8 +40,8 @@ class JiraClient:
         project_key: str,
         summary: str,
         description: str,
-        priority: str, # A, B or C
-        due_date: str | None = None, # e.g. 2019-05-11
+        priority: str,
+        due_date: str | None = None,
         assignee: str | None = None,
         issue_type: str = "Task",
     ) -> dict | None:
