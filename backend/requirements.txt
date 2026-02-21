@@ -157,9 +157,5 @@ opentelemetry-instrumentation-aiohttp-client==0.60b1
 ## ADDED BY GROUP 7
 ## --------------------------
 
-## For vector database
-sentence-transformers>=2.2.0
-qdrant-client>=1.7.0
-
 ## JIRA
 jira>=3.5.0
