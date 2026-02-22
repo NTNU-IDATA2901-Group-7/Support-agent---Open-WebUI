@@ -159,3 +159,6 @@ opentelemetry-instrumentation-aiohttp-client==0.60b1
 
 ## JIRA
 jira>=3.5.0
+
+## Convert HTML to markdown
+markdownify>=1.2.2
