@@ -1,8 +1,11 @@
-"""HTTP endpoint for JIRA sync"""
+
+"""HTTP endpoints for JIRA sync and create_issue"""
 
 import os
 import logging
+from httpx import AsyncClient
 
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from open_webui.retrieval.jira_tickets import fetch_jira_tickets
@@ -12,7 +15,7 @@ from open_webui.retrieval.vector.main import VectorItem
 
 from open_webui.utils.auth import get_admin_user, get_verified_user
 # from open_webui.utils.jira.helpers import embed_jira_tickets
-from open_webui.utils.jira.formatters import format_jira_ticket_for_embedding
+from open_webui.utils.jira.formatters import description_text_to_adf, format_jira_ticket_for_embedding
 from open_webui.utils.embeddings import generate_embeddings
 
 
@@ -97,4 +100,98 @@ async def jira_status(user=Depends(get_verified_user)):
     has = VECTOR_DB_CLIENT.has_collection(JIRA_COLLECTION)
     return {"synced": has, "collection": JIRA_COLLECTION}
 
+
+
+
+
+# =================================================================================
+# CREATE ISSUE
+# =================================================================================
+
+class JiraCreateTicketForm(BaseModel):
+    project_key: str
+    summary: str
+    description: str
+    priority: str
+    due_date: str | None = None
+    assignee: str | None = None
+    issue_type: str = "Task"
+
+
+@router.post("/create")
+async def create_issue(
+    form: JiraCreateTicketForm, # Body will be parsed into this Pydantic model
+    request: Request,
+    user = Depends(get_verified_user)
+) -> dict:
+    """
+    Create a Jira issue in a given project.
+
+    Args:
+        project_key (str): The key of the Jira project (e.g., "TEST").
+        summary (str): Title/summary of the issue.
+        description (str): Plain text description/body of the issue.
+        priority (str): Priority level, e.g., "A", "B", or "C".
+        due_date (str): Due date for the issue, in YYYY-MM-DD format (default None).
+        assignee (str): Account ID to assign the issue to (default None).
+        issue_type (str, optional): Type of Jira issue (default "Task").
+
+    Returns:
+        The JSON response from Jira API (created issue info), and None if it fails to create the
+    issue.
+    """
+    log.debug(f"User {user.id} requested Jira issue creation in {form.project_key}, summary: {form.summary}")
+
+    # 1. Get OAuth token from Open WebUI's built-in OAuth client manager
+    oauth_client_manager = request.app.state.oauth_client_manager
+    oauth_token_dict = await oauth_client_manager.get_oauth_token(
+        user_id=user.id,
+        client_id=JIRA_OAUTH_PROVIDER,
+        force_refresh=False
+    )
+
+    oauth_access_token = oauth_token_dict.get("access_token")
+
+    if not oauth_access_token:
+        log.warning(f"No valid JIRA OAuth token found for user_id {user.id}, client_id {JIRA_OAUTH_PROVIDER}")
+        raise HTTPException(status_code=401, detail="No JIRA OAuth session found")
+
+
+    url = f"{JIRA_BASE_URL}/rest/api/3/issue"
+
+    # 2. Build headers
+    headers = {
+        "Authorization": f"Bearer {oauth_access_token}",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+
+    # 3. Build payload
+    log.debug(f"Building payload")
+    fields = {
+        "project": {"key": form.project_key},
+        "summary": form.summary,
+        "description": description_text_to_adf(form.description),
+        "priority": {"name": form.priority},
+        "issuetype": {"name": form.issue_type},
+    }
+
+    if form.due_date:
+        fields["duedate"] = form.due_date
+    if form.assignee:
+        fields["assignee"] = {"id": form.assignee}
+
+    payload = {"fields": fields}
+    log.debug(f"Payload built: {payload}")
+
+    # 4. Post to Jira
+    try:
+        async with AsyncClient() as client:
+            response = await client.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        log.info(f"Created Jira issue {response.json().get('key')} in project {form.project_key}")
+        return response.json()
+    except Exception as e:
+        log.error(f"Failed to create Jira issue: {e}")
+        raise HTTPException(status_code=502, detail=str(e))
 
