@@ -1,3 +1,4 @@
+
 """
 RESULT FORMATTERS - Converts data to LLM-readable text
 """
@@ -5,7 +6,28 @@ RESULT FORMATTERS - Converts data to LLM-readable text
 import logging
 log = logging.getLogger(__name__)
 
+
 # ==================== JIRA FORMATTERS ====================
+
+def description_text_to_adf(description: str) -> dict:
+    """Convert plain description text to ADF (Atlassian Document Format) - used by create_issue
+    method"""
+    return {
+        "content": [
+        {
+          "content": [
+            {
+              "text": description,
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+        ],
+        "type": "doc",
+        "version": 1
+}
+
 
 def format_similar_jira_ticket_search_results(result: dict) -> str:
     """
@@ -40,18 +62,19 @@ def format_similar_jira_ticket_search_results(result: dict) -> str:
     return "\n".join(lines)
 
 
-def format_jira_ticket_details(result: dict) -> str:
+# TODO: Add logging
+def format_jira_ticket_details(ticket_dict: dict) -> str:
     """
     Format the output of `get_jira_ticket_details_by_key` into a readable
     block for LLM context.
 
     Args:
-        result (dict): Dictionary returned by `get_jira_ticket_details_by_key`.
+        ticket_dict (dict): Dictionary returned by `get_jira_ticket_details_by_key`.
 
     Returns:
         str: Formatted text block
     """
-    ticket = result.get("ticket")
+    ticket = ticket_dict.get("ticket")
     if not ticket:
         return "No ticket details found."
 
@@ -62,6 +85,25 @@ def format_jira_ticket_details(result: dict) -> str:
         f"Priority: {ticket.get('priority', 'None')}",
         f"Assignee: {ticket.get('assignee', 'Unassigned')}",
         f"Created: {ticket.get('created', 'Unknown')}",
+        f"Description: {ticket.get('description', '')}",
+    ]
+
+    log.info("Finished formatting Jira ticket details")
+    return "\n".join(lines)
+
+
+def format_jira_ticket_for_embedding(ticket: dict) -> str:
+    """
+    Format a ticket into a format fit for embedding them as vectors.
+
+    Args:
+        ticket (dict): The ticket (with summary and description fields) you want to embed.
+
+    Returns:
+        str: The ticket with summary and description formatted.
+    """
+    lines = [
+        f"Summary: {ticket.get('summary', '')}",
         f"Description: {ticket.get('description', '')}",
     ]
 
