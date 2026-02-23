@@ -95,6 +95,11 @@ from open_webui.routers import (
     scim,
 )
 
+
+# Import JIRA router
+from open_webui.routers.jira import router as jira_router
+
+
 from open_webui.routers.retrieval import (
     get_embedding_function,
     get_reranking_function,
@@ -1440,6 +1445,14 @@ app.include_router(
     evaluations.router, prefix="/api/v1/evaluations", tags=["evaluations"]
 )
 app.include_router(utils.router, prefix="/api/v1/utils", tags=["utils"])
+
+
+# =====================================================================
+# Added for support agent project
+# =====================================================================
+
+app.include_router(jira_router, prefix="/api/v1/jira", tags=["jira"])
+
 
 # SCIM 2.0 API for identity management
 if ENABLE_SCIM:

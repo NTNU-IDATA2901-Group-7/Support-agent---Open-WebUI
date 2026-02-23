@@ -1,6 +1,7 @@
 {
 	"extends": "./.svelte-kit/tsconfig.json",
 	"compilerOptions": {
+    // Open web UI default options
 		"allowJs": true,
 		"checkJs": false,
 		"esModuleInterop": true,
@@ -8,6 +9,8 @@
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
 		"sourceMap": true,
+<<<<<<< HEAD
+=======
 		"strict": false,
 		"noImplicitAny": false,
 		"noImplicitThis": false,
@@ -26,9 +29,19 @@
 		"svelte.plugin.svelte.diagnostics.enable": false,
 		"svelte.plugin.svelte.lint.enable": false,
 		"prettier.printWidth": 100
+		"strict": true
+>>>>>>> eff8cd7d7c42be1456deddbe03bac574be134a7c
+    // Our additions
+		"strict": false,
+ 		"checkJs": false
 	}
 }
 	// Path aliases are handled by https://kit.svelte.dev/docs/configuration#alias
 	//
 	// If you want to overwrite includes/excludes, make sure to copy over the relevant includes/excludes
 	// from the referenced tsconfig.json - TypeScript does not merge them in
+<<<<<<< HEAD
+}
+
+=======
+>>>>>>> eff8cd7d7c42be1456deddbe03bac574be134a7c
