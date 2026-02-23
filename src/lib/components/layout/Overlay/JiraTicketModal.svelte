@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
+	import { toast } from 'svelte-sonner';
 	import XMark from '../../icons/XMark.svelte';
 
 	export let show = false;
@@ -13,6 +14,7 @@
 	let affectedComponents = '';
 	let attachedFiles: File[] = [];
 	let errors: { [key: string]: string } = {};
+	let isSubmitting = false;
 
 	const urgencyOptions = [
 		{ value: 'A', label: 'A' },
@@ -48,22 +50,42 @@
 		attachedFiles = attachedFiles.filter((_, i) => i !== index);
 	}
 
-	function handleSubmit() {
-		if (!validateForm()) {
-			return;
-		}
+    async function handleSubmit() {
+        if (!validateForm()) {
+            return;
+        }
 
-		const ticketData = {
-			title,
-			description,
-			urgency,
-			affectedComponents: affectedComponents.split(',').map((c) => c.trim()),
-			attachments: attachedFiles
-		};
+        isSubmitting = true;
 
-		dispatch('submit', ticketData);
-		resetForm();
-	}
+        try {
+            const response = await fetch('/api/v1/jira/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    project_key: 'SUP', // TODO: make this configurable
+                    summary: title,
+                    description: description,
+                    priority: urgency,
+                    issue_type: 'Task'
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to create ticket');
+            }
+
+            const result = await response.json();
+            toast.success(`Jira ticket ${result.key} created successfully`);
+            dispatch('submit', result);
+            resetForm();
+            show = false;
+        } catch (error) {
+            toast.error('Failed to create Jira ticket: ' + error.message);
+        } finally {
+            isSubmitting = false;
+        }
+    }
 
 	function handleCancel() {
 		resetForm();
@@ -208,22 +230,24 @@
 			</form>
 
 			<!-- Footer -->
-			<div class="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-800 p-6">
-				<button
-					type="button"
-					on:click={handleCancel}
-					class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
-				>
-					Cancel
-				</button>
-				<button
-					type="button"
-					on:click={handleSubmit}
-					class="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-100 transition-colors font-medium"
-				>
-					Create Ticket
-				</button>
-			</div>
+            <div class="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-800 p-6">
+                <button
+                    type="button"
+                    on:click={handleCancel}
+                    disabled={isSubmitting}
+                    class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium disabled:opacity-50"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    on:click={handleSubmit}
+                    disabled={isSubmitting}
+                    class="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
+                >
+                    {isSubmitting ? 'Creating...' : 'Create Ticket'}
+                </button>
+            </div>
 		</div>
 	</div>
 {/if}
