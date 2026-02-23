@@ -1,7 +1,8 @@
 """
 Support Agent MCP Server
 
-MCP protocol layer that exposes all tools to Open-WebUI.
+MCP protocol layer that exposes all tools to Open-WebUI, and handles tool calls by routing to the
+actual method implementations.
 """
 
 # TODO: Implement better error handling

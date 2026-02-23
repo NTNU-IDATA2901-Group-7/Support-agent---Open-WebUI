@@ -40,6 +40,7 @@ def format_similar_jira_ticket_search_results(result: dict) -> str:
     return "\n".join(lines)
 
 
+# TODO: Add logging
 def format_jira_ticket_details(result: dict) -> str:
     """
     Format the output of `get_jira_ticket_details_by_key` into a readable
