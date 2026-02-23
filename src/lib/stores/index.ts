@@ -109,6 +109,8 @@ type BaseModel = {
 	name: string;
 	info?: ModelConfig;
 	owned_by: 'ollama' | 'openai' | 'arena';
+	filters?: Array<any>;
+	has_user_valves?: boolean;
 };
 
 export interface OpenAIModel extends BaseModel {
@@ -168,6 +170,7 @@ type Settings = {
 	notifications?: any;
 	imageCompression?: boolean;
 	imageCompressionSize?: any;
+	imageCompressionInChannels?: boolean;
 	textScale?: number;
 	widescreenMode?: null;
 	largeTextAsFile?: boolean;
@@ -175,6 +178,8 @@ type Settings = {
 	hapticFeedback?: boolean;
 	responseAutoCopy?: any;
 	richTextInput?: boolean;
+	showFormattingToolbar?: boolean;
+	insertPromptAsRichText?: boolean;
 	params?: any;
 	userLocation?: any;
 	webSearch?: any;
@@ -277,7 +282,32 @@ type Config = {
 		enable_autocomplete_generation: boolean;
 		enable_direct_connections: boolean;
 		enable_version_update_check: boolean;
+		enable_code_interpreter?: boolean;
+		enable_notes?: boolean;
 		folder_max_file_count?: number;
+	};
+	file?: {
+		max_count?: number;
+		max_size?: number;
+		image_compression?: {
+			width?: number;
+			height?: number;
+		};
+	};
+	audio?: {
+		stt?: {
+			engine?: string;
+			[key: string]: any;
+		};
+		tts?: {
+			engine?: string;
+			engineConfig?: {
+				dtype?: string;
+				[key: string]: any;
+			};
+			[key: string]: any;
+		};
+		[key: string]: any;
 	};
 	oauth: {
 		providers: {
