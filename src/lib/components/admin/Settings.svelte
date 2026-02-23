@@ -21,6 +21,7 @@
 	import Evaluations from './Settings/Evaluations.svelte';
 	import CodeExecution from './Settings/CodeExecution.svelte';
 	import Tools from './Settings/Tools.svelte';
+	import VectorDatabase from './Settings/VectorDatabase.svelte';
 
 	import ChartBar from '../icons/ChartBar.svelte';
 	import DocumentChartBar from '../icons/DocumentChartBar.svelte';
@@ -48,6 +49,7 @@
 			'audio',
 			'images',
 			'pipelines',
+			'vector-database',
 			'db'
 		].includes(tabFromPath)
 			? tabFromPath
@@ -237,6 +239,12 @@
 			title: 'Pipelines',
 			route: '/admin/settings/pipelines',
 			keywords: ['pipelines', 'workflows', 'filters', 'valves', 'middleware']
+		},
+		{
+			id: 'vector-database',
+			title: 'Vector Database',
+			route: '/admin/settings/vector-database',
+			keywords: ['vector', 'database', 'sync', 'embeddings', 'rag', 'retrieval']
 		},
 		{
 			id: 'db',
@@ -482,6 +490,17 @@
 								d="m10.933 19.231-7.668-4.13-1.37.739a.75.75 0 0 0 0 1.32l9.75 5.25c.221.12.489.12.71 0l9.75-5.25a.75.75 0 0 0 0-1.32l-1.37-.738-7.668 4.13a2.25 2.25 0 0 1-2.134-.001Z"
 							/>
 						</svg>
+					{:else if tab.id === 'vector-database'}
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+							class="size-4"
+						>
+							<path
+								d="M12 2c5.523 0 10 2.239 10 5v10c0 2.761-4.477 5-10 5S2 19.761 2 17V7c0-2.761 4.477-5 10-5m0 2c-4.418 0-8 1.79-8 4v2.5c0-1.933 3.582-3.5 8-3.5s8 1.567 8 3.5V8c0-2.21-3.582-4-8-4m0 8c-4.418 0-8 1.79-8 4v2.5c0-1.933 3.582-3.5 8-3.5s8 1.567 8 3.5V14c0-2.21-3.582-4-8-4"
+							/>
+						</svg>
 					{:else if tab.id === 'db'}
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -581,6 +600,12 @@
 			/>
 		{:else if selectedTab === 'pipelines'}
 			<Pipelines
+				saveHandler={() => {
+					toast.success($i18n.t('Settings saved successfully!'));
+				}}
+			/>
+		{:else if selectedTab === 'vector-database'}
+			<VectorDatabase
 				saveHandler={() => {
 					toast.success($i18n.t('Settings saved successfully!'));
 				}}

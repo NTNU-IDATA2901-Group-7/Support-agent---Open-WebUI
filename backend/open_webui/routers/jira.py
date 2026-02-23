@@ -25,7 +25,6 @@ from open_webui.utils.embeddings import generate_embeddings
 
 log = logging.getLogger(__name__)
 router = APIRouter()
-pgVectorClient = PgvectorClient()
 
 JIRA_CLOUD_ID = os.environ.get("JIRA_CLOUD_ID")
 JIRA_COLLECTION = "jira_support_tickets"
@@ -87,6 +86,8 @@ async def sync_jira(
             for emb, text, meta in zip(embedding_response["data"], texts, metadata_list)
         ]
 
+        # Lazily initialize pgVectorClient only when needed
+        pgVectorClient = PgvectorClient()
         pgVectorClient.upsert(collection_name=JIRA_COLLECTION, items=vector_items)
         log.info('Successfully synced jira tickets with vector database')
     except Exception as e:
