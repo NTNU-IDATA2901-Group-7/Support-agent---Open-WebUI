@@ -1174,15 +1174,15 @@ except Exception as e:
 if default_prompt_suggestions == []:
     default_prompt_suggestions = [
         {
-            "title": ["Report a bug", "describe an issue you encountered"],
+            "title": ["🐞 Report a Bug", "describe an issue you encountered"],
             "content": "I want to report a bug.",
         },
         {
-            "title": ["Suggest a feature", "tell us your idea"],
+            "title": ["💡 Suggest a Feature", "tell us your idea"],
             "content": "I'd like to suggest a new feature.",
         },
         {
-            "title": ["Get help", "with a problem you're facing"],
+            "title": ["🆘 Get Help", "with a problem you're facing"],
             "content": "I need help with a problem I'm facing.",
         },
     ]

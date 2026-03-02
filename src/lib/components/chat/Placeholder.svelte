@@ -197,6 +197,23 @@
 				</div>
 			{/if}
 
+			            <!-- Welcome message -->
+            <div class="w-full max-w-2xl mb-4 p-4 bg-white-50 dark:bg-gray-900 border border-blue-200 dark:border-gray-900 rounded-xl text-sm text-gray-800 dark:text-gray-300 text-center">
+                <p class="font-semibold text-base mb-2 text-gray-900 dark:text-white">
+                    Welcome to our Support!
+                </p>
+                <p class="mb-2">
+                    Here you can raise requests or issues to get help.
+                </p>
+                <p class="mb-1">
+                    If it is an operationally critical issue, please contact us by phone:
+                </p>
+                <p class="font-medium">
+                    📞 <a href="tel:+4770157669" class="underline hover:text-blue-600">+47 70 15 76 69</a> / 
+                    <a href="tel:+4770157662" class="underline hover:text-blue-600">+47 70 15 76 62</a>
+                </p>
+            </div>
+			
 			<div class="text-base font-normal @md:max-w-3xl w-full py-3 {atSelectedModel ? 'mt-2' : ''}">
 				<MessageInput
 					bind:this={messageInput}
