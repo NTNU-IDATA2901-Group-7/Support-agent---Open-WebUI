@@ -552,6 +552,30 @@ FEISHU_REDIRECT_URI = PersistentConfig(
     os.environ.get("FEISHU_REDIRECT_URI", ""),
 )
 
+ATLASSIAN_CLIENT_ID = PersistentConfig(
+    "ATLASSIAN_CLIENT_ID",
+    "oauth.atlassian.client_id",
+    os.environ.get("ATLASSIAN_CLIENT_ID", ""),
+)
+
+ATLASSIAN_CLIENT_SECRET = PersistentConfig(
+    "ATLASSIAN_CLIENT_SECRET",
+    "oauth.atlassian.client_secret",
+    os.environ.get("ATLASSIAN_CLIENT_SECRET", ""),
+)
+
+ATLASSIAN_OAUTH_SCOPE = PersistentConfig(
+    "ATLASSIAN_OAUTH_SCOPE",
+    "oauth.atlassian.scope",
+    os.environ.get("ATLASSIAN_OAUTH_SCOPE", "read:me"),
+)
+
+ATLASSIAN_REDIRECT_URI = PersistentConfig(
+    "ATLASSIAN_REDIRECT_URI",
+    "oauth.atlassian.redirect_uri",
+    os.environ.get("ATLASSIAN_REDIRECT_URI", ""),
+)
+
 ENABLE_OAUTH_ROLE_MANAGEMENT = PersistentConfig(
     "ENABLE_OAUTH_ROLE_MANAGEMENT",
     "oauth.enable_role_mapping",
@@ -798,6 +822,34 @@ def load_oauth_providers():
         OAUTH_PROVIDERS["feishu"] = {
             "register": feishu_oauth_register,
             "sub_claim": "user_id",
+        }
+
+    if ATLASSIAN_CLIENT_ID.value and ATLASSIAN_CLIENT_SECRET.value:
+
+        def atlassian_oauth_register(oauth: OAuth):
+            client = oauth.register(
+                name="atlassian",
+                client_id=ATLASSIAN_CLIENT_ID.value,
+                client_secret=ATLASSIAN_CLIENT_SECRET.value,
+                access_token_url="https://auth.atlassian.com/oauth/token",
+                authorize_url="https://auth.atlassian.com/authorize",
+                api_base_url="https://api.atlassian.com",
+                userinfo_endpoint="https://api.atlassian.com/me",
+                client_kwargs={
+                    "scope": ATLASSIAN_OAUTH_SCOPE.value,
+                    **(
+                        {"timeout": int(OAUTH_TIMEOUT.value)}
+                        if OAUTH_TIMEOUT.value
+                        else {}
+                    ),
+                },
+                redirect_uri=ATLASSIAN_REDIRECT_URI.value,
+            )
+            return client
+
+        OAUTH_PROVIDERS["atlassian"] = {
+            "register": atlassian_oauth_register,
+            "sub_claim": "account_id",
         }
 
     configured_providers = []
@@ -1174,16 +1226,31 @@ except Exception as e:
 if default_prompt_suggestions == []:
     default_prompt_suggestions = [
         {
-            "title": ["🐞 Report a Bug", "describe an issue you encountered"],
-            "content": "I want to report a bug.",
+            "title": ["Help me study", "vocabulary for a college entrance exam"],
+            "content": "Help me study vocabulary: write a sentence for me to fill in the blank, and I'll try to pick the correct option.",
         },
         {
-            "title": ["💡 Suggest a Feature", "tell us your idea"],
-            "content": "I'd like to suggest a new feature.",
+            "title": ["Give me ideas", "for what to do with my kids' art"],
+            "content": "What are 5 creative things I could do with my kids' art? I don't want to throw them away, but it's also so much clutter.",
         },
         {
-            "title": ["🆘 Get Help", "with a problem you're facing"],
-            "content": "I need help with a problem I'm facing.",
+            "title": ["Tell me a fun fact", "about the Roman Empire"],
+            "content": "Tell me a random fun fact about the Roman Empire",
+        },
+        {
+            "title": ["Show me a code snippet", "of a website's sticky header"],
+            "content": "Show me a code snippet of a website's sticky header in CSS and JavaScript.",
+        },
+        {
+            "title": [
+                "Explain options trading",
+                "if I'm familiar with buying and selling stocks",
+            ],
+            "content": "Explain options trading in simple terms if I'm familiar with buying and selling stocks.",
+        },
+        {
+            "title": ["Overcome procrastination", "give me tips"],
+            "content": "Could you start by asking me about instances when I procrastinate the most and then give me some suggestions to overcome it?",
         },
     ]
 

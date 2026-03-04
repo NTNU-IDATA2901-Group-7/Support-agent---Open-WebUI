@@ -44,6 +44,62 @@
 
 	let ldapUsername = '';
 
+	let showJiraModal = false;
+	let jiraConnected = false;
+	let jiraChecked = false;
+
+	const checkJiraConnection = async () => {
+		try {
+			const response = await fetch(`${WEBUI_API_BASE_URL}/auths/jira/status`, {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					...(localStorage.token && { Authorization: `Bearer ${localStorage.token}` })
+				}
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				jiraConnected = data.connected;
+				return data.connected;
+			}
+		} catch (error) {
+			console.error('Error checking JIRA connection:', error);
+		}
+		return false;
+	};
+
+	const handleJiraConnect = async () => {
+		try {
+			// Request authorization URL from backend for JIRA linking
+			const response = await fetch(`${WEBUI_API_BASE_URL}/auths/jira/link/authorize`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					...(localStorage.token && { Authorization: `Bearer ${localStorage.token}` })
+				}
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				// Redirect to Atlassian OAuth with linking state
+				window.location.href = data.authorization_url;
+			} else {
+				toast.error('Failed to initiate JIRA connection');
+			}
+		} catch (error) {
+			console.error('Error initiating JIRA connection:', error);
+			toast.error('Error connecting to JIRA');
+		}
+	};
+
+	const handleJiraSkip = async () => {
+		showJiraModal = false;
+		const redirectPath = localStorage.getItem('redirectPath') || $page.url.searchParams.get('redirect') || '/';
+		goto(redirectPath);
+		localStorage.removeItem('redirectPath');
+	};
+
 	const setSessionUser = async (sessionUser, redirectPath: string | null = null) => {
 		if (sessionUser) {
 			console.log(sessionUser);
@@ -59,6 +115,16 @@
 			const timezone = getUserTimezone();
 			if (sessionUser.token && timezone) {
 				updateUserTimezone(sessionUser.token, timezone);
+			}
+
+			// Check if user needs to connect JIRA (first-time login)
+			const jiraConnection = await checkJiraConnection();
+			if (!jiraConnection && $config?.oauth?.providers?.atlassian) {
+				showJiraModal = true;
+				if (redirectPath) {
+					localStorage.setItem('redirectPath', redirectPath);
+				}
+				return;
 			}
 
 			if (!redirectPath) {
@@ -414,25 +480,6 @@
 										{/if}
 									{/if}
 								</div>
-
-								<!-- Always-visible test Microsoft button (temporary) -->
-								<div class="mt-4 w-full">
-									<hr class="w-full h-px my-4 border-0 dark:bg-gray-100/10 bg-gray-700/10" />
-									<div class="text-center mb-3 text-sm text-gray-600 dark:text-gray-400">{$i18n.t('or')}</div>
-									<button
-										class="flex justify-center items-center w-full rounded-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white transition text-sm font-medium"
-										on:click={() => (window.location.href = `${WEBUI_BASE_URL}/oauth/microsoft/login`)}
-									>
-										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 21" class="size-6 mr-3">
-											<rect x="1" y="1" width="9" height="9" fill="#f25022" />
-											<rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
-											<rect x="11" y="1" width="9" height="9" fill="#7fba00" />
-											<rect x="11" y="11" width="9" height="9" fill="#ffb900" />
-										</svg>
-										<span>{$i18n.t('Continue with Microsoft')}</span>
-									</button>
-								</div>
-
 							</form>
 
 							{#if Object.keys($config?.oauth?.providers ?? {}).length > 0}
@@ -479,7 +526,7 @@
 									{/if}
 									{#if $config?.oauth?.providers?.microsoft}
 										<button
-											class="flex justify-center items-center bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-medium text-sm py-2.5"
+											class="flex justify-center items-center bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white transition w-full rounded-full font-medium text-sm py-2.5"
 											on:click={() => {
 												window.location.href = `${WEBUI_BASE_URL}/oauth/microsoft/login`;
 											}}
@@ -593,6 +640,31 @@
 							<div class="max-w-3xl mx-auto">
 								<div class="mt-2 text-[0.7rem] text-gray-500 dark:text-gray-400 marked">
 									{@html DOMPurify.sanitize(marked($config?.metadata?.login_footer))}
+								</div>
+							</div>
+						{/if}
+
+						{#if showJiraModal}
+							<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+								<div class="bg-white dark:bg-gray-900 rounded-lg p-8 max-w-sm w-full mx-4">
+									<h2 class="text-2xl font-bold mb-4 dark:text-white">Connect to Atlassian</h2>
+									<p class="text-gray-600 dark:text-gray-300 mb-6">
+										To enhance your experience, we recommend connecting your Atlassian (JIRA) account. This allows us to better assist you with your JIRA tickets and projects.
+									</p>
+									<div class="flex gap-3">
+										<button
+											class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition"
+											on:click={handleJiraConnect}
+										>
+											{$i18n.t('Connect JIRA')}
+										</button>
+										<button
+											class="flex-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-4 rounded-lg transition"
+											on:click={handleJiraSkip}
+										>
+											{$i18n.t('Skip for now')}
+										</button>
+									</div>
 								</div>
 							</div>
 						{/if}
