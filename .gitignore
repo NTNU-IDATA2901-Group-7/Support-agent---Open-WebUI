@@ -319,6 +319,7 @@ cypress/screenshots
 .DS_Store
 .jukit
 dooing.json
+settings.local.json
 
 # Virtual environments
 .envrc
