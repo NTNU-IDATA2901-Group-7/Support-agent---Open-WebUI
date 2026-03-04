@@ -318,9 +318,10 @@ cypress/screenshots
 # Local system files
 .DS_Store
 .jukit
+dooing.json
 
 # Virtual environments
-.envrc 
+.envrc
 .direnv
 .venv
 venv
