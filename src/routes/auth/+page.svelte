@@ -61,7 +61,10 @@
 			if (response.ok) {
 				const data = await response.json();
 				jiraConnected = data.connected;
+				console.log('JIRA connection status:', data.connected);
 				return data.connected;
+			} else {
+				console.error('Failed to check JIRA connection:', response.status);
 			}
 		} catch (error) {
 			console.error('Error checking JIRA connection:', error);
@@ -71,6 +74,7 @@
 
 	const handleJiraConnect = async () => {
 		try {
+			console.log('handleJiraConnect called');
 			// Request authorization URL from backend for JIRA linking
 			const response = await fetch(`${WEBUI_API_BASE_URL}/auths/jira/link/authorize`, {
 				method: 'POST',
@@ -80,11 +84,16 @@
 				}
 			});
 
+			console.log('JIRA link authorize response:', response.status);
+
 			if (response.ok) {
 				const data = await response.json();
+				console.log('Got authorization URL:', data.authorization_url);
 				// Redirect to Atlassian OAuth with linking state
 				window.location.href = data.authorization_url;
 			} else {
+				const errorData = await response.text();
+				console.error('Failed response:', errorData);
 				toast.error('Failed to initiate JIRA connection');
 			}
 		} catch (error) {
@@ -119,7 +128,11 @@
 
 			// Check if user needs to connect JIRA (first-time login)
 			const jiraConnection = await checkJiraConnection();
+			console.log('JIRA Connection result:', jiraConnection);
+			console.log('Atlassian OAuth enabled:', $config?.oauth?.providers?.atlassian);
+			
 			if (!jiraConnection && $config?.oauth?.providers?.atlassian) {
+				console.log('Showing JIRA connection modal');
 				showJiraModal = true;
 				if (redirectPath) {
 					localStorage.setItem('redirectPath', redirectPath);
