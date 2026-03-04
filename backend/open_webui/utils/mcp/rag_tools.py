@@ -14,10 +14,10 @@ from open_webui.retrieval.vector.dbs.pgvector import PgvectorClient
 
 log = logging.getLogger(__name__)
 
-AZURE_OPENAI_KEY = os.environ.get("AZURE_OPENAI_KEY")
-AZURE_OPENAI_VERSION = os.environ.get("AZURE_OPENAI_VERSION")
-AZURE_OPENAI_MODEL = os.environ.get("AZURE_OPENAI_VERSION")
-AZURE_OPENAI_BASE_URL=os.environ.get("AZURE_OPENAI_BASE_URL")
+RAG_AZURE_OPENAI_KEY = os.environ.get("RAG_RAG_AZURE_OPENAI_API_KEY")
+RAG_AZURE_OPENAI_VERSION = os.environ.get("RAG_RAG_AZURE_OPENAI_API_VERSION")
+RAG_AZURE_OPENAI_MODEL = os.environ.get("RAG_EMBEDDING_MODEL")
+RAG_AZURE_OPENAI_BASE_URL = os.environ.get("RAG_RAG_AZURE_OPENAI_BASE_URL")
 
 JIRA_COLLECTION = "jira_support_tickets"
 
@@ -39,12 +39,12 @@ async def search_vector_db_for_similar_jira_tickets(
     """
     log.info(f"Performing vector search via pgvector for search-text: '{search_text}'")
     pgVectorClient = PgvectorClient()
-    extra_params = {"key": AZURE_OPENAI_KEY,
-                    "azure_api_version": AZURE_OPENAI_VERSION,
-                    "url": AZURE_OPENAI_BASE_URL}
+    extra_params = {"key": RAG_AZURE_OPENAI_KEY,
+                    "azure_api_version": RAG_AZURE_OPENAI_VERSION,
+                    "url": RAG_AZURE_OPENAI_BASE_URL}
     embedding = await generate_embeddings(
         engine="azure_openai",
-        model=AZURE_OPENAI_MODEL,
+        model=RAG_AZURE_OPENAI_MODEL,
         text=search_text,
         # prefix=None,
         **extra_params
