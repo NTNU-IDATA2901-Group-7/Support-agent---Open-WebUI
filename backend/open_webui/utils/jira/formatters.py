@@ -1,4 +1,3 @@
-
 """
 RESULT FORMATTERS - Converts data to LLM-readable text
 """
@@ -62,7 +61,39 @@ def format_similar_jira_ticket_search_results(result: dict) -> str:
     return "\n".join(lines)
 
 
-# TODO: Add logging
+
+
+def format_similar_jira_ticket_search_results_new(result) -> str:
+    """
+    Formats Jira tickets search result into a structured text block for LLM context.
+    Args:
+        search_result (SearchResult): Output from vector search.
+    Returns:
+        str: Formatted text
+    """
+    num = len(result.ids[0])
+    log.info(f"Formatting Jira ticket search results ({num} results)")
+
+    rows = zip(
+        result.ids[0],
+        result.documents[0],
+        result.metadatas[0],
+        result.distances[0],
+    )
+
+    lines = [f"Top {num} most relevant Jira tickets:\n"]
+    for i, (doc_id, doc_text, meta, score) in enumerate(rows, 1):
+        lines.append(f"[{i}]")
+        lines.append(f"Key: {meta.get('key', doc_id)}")
+        lines.append(f"Summary: {meta.get('summary', doc_text[:80] if doc_text else '')}")
+        lines.append(f"Similarity: {score:.2f}\n")
+    str_result = "\n".join(lines)
+    log.debug(str_result)
+    return str_result
+
+
+
+
 def format_jira_ticket_details(ticket_dict: dict) -> str:
     """
     Format the output of `get_jira_ticket_details_by_key` into a readable

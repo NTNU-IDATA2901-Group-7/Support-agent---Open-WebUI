@@ -19,6 +19,8 @@ log = logging.getLogger(__name__)
 JIRA_DOMAIN = os.environ.get("JIRA_DOMAIN")
 JIRA_PROJECT_KEY = os.environ.get("JIRA_PROJECT_KEY")
 
+BASE_URL = f"https://{JIRA_DOMAIN}/rest/api/3"
+
 # =================================================================================
 # FETCH JIRA TICKETS
 # =================================================================================
@@ -37,7 +39,7 @@ async def fetch_jira_tickets(oauth_access_token: str) -> list[dict]:
     }
 
     # 2. Create a URL and a query that matches all tickets
-    url = f"https://{JIRA_DOMAIN}/rest/api/3/search/jql"
+    url = f"{BASE_URL}/search/jql"
     query = {
         'jql': f'project = {JIRA_PROJECT_KEY} ORDER BY created DESC', 
         'fields': 'created,status,assignee,type,status,description,summary,key',
@@ -57,17 +59,17 @@ async def fetch_jira_tickets(oauth_access_token: str) -> list[dict]:
 
     log.info("Parsing fields of tickets JSONs.")
     # 4. Transform Jira format into our "tickets" list format
-    tickets = [
-        {
+    tickets = []
+    for issue in jira_data['issues']:
+        rendered_description = (issue.get("renderedFields") or {}).get("description") or ""
+        tickets.append({
             "id": issue['id'],
             "key": issue['key'],
             "created": issue['fields']['created'],
             "status": issue['fields']['status']['name'],
             "summary": issue['fields']['summary'],
-            "description": markdownify(issue['renderedFields']['description'])
-        }
-        for issue in jira_data['issues']
-    ]
+            "description": markdownify(rendered_description) if rendered_description else "",
+        })
 
     log.info(f"Fetched {len(tickets)} JIRA tickets")
     return tickets

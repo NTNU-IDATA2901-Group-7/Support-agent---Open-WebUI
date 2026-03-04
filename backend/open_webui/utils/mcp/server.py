@@ -166,7 +166,7 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
         # ==================== JIRA TOOLS ====================
 
         if name == "get_jira_ticket_details_by_key":
-            result = get_jira_ticket_details_by_key(
+            result = await get_jira_ticket_details_by_key(
                 ticket_key=arguments["ticket_key"]
             )
             return [TextContent(
@@ -174,7 +174,7 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
                 text=format_jira_ticket_details(result))]
 
         elif name == "search_jira_tickets_by_jql":
-            result = search_jira_tickets_by_jql(
+            result = await search_jira_tickets_by_jql(
                 jql_query=arguments["jql_query"],
                 maxResults=arguments.get("maxResults", 10)
             )
