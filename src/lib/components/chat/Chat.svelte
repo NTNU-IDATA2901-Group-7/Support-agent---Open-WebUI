@@ -2554,6 +2554,7 @@
 									bind:webSearchEnabled
 									bind:atSelectedModel
 									bind:showCommands
+									bind:showJiraModal
 									toolServers={$toolServers}
 									{generating}
 									{stopResponse}
