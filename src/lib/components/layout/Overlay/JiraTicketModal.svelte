@@ -2,6 +2,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import XMark from '../../icons/XMark.svelte';
+	import { showSidebar } from '$lib/stores';
 
 	export let show = false;
 	export let files = [];
@@ -103,7 +104,10 @@
 </script>
 
 {#if show}
-	<div class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4">
+	<div
+		class="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-sm p-4 transition-all duration-200"
+		style={$showSidebar ? 'left: var(--sidebar-width);' : ''}
+	>
 
 
 		<div class="w-full max-w-2xl rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-300 dark:border-gray-800 overflow-hidden">

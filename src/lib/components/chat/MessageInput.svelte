@@ -90,7 +90,6 @@
 	import { goto } from '$app/navigation';
 	import InputModal from '../common/InputModal.svelte';
 	import Expand from '../icons/Expand.svelte';
-	import JiraTicketModal from '../layout/Overlay/JiraTicketModal.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -134,7 +133,7 @@
 	let selectedValvesItemId = null;
 	let integrationsMenuCloseOnOutsideClick = true;
 
-	let showJiraModal = false;
+	export let showJiraModal = false;
 
 	$: if (!showValvesModal) {
 		integrationsMenuCloseOnOutsideClick = true;
@@ -1011,16 +1010,6 @@
 	}}
 	on:close={() => {
 		integrationsMenuCloseOnOutsideClick = true;
-	}}
-/>
-
-<JiraTicketModal
-	show={showJiraModal}
-	{prompt}
-	{files}
-	on:submit={handleJiraTicketSubmit}
-	on:cancel={() => {
-		showJiraModal = false;
 	}}
 />
 

@@ -87,6 +87,7 @@
 
 	import Banner from '../common/Banner.svelte';
 	import MessageInput from '$lib/components/chat/MessageInput.svelte';
+	import JiraTicketModal from '$lib/components/layout/Overlay/JiraTicketModal.svelte';
 	import Messages from '$lib/components/chat/Messages.svelte';
 	import Navbar from '$lib/components/chat/Navbar.svelte';
 	import ChatControls from './ChatControls.svelte';
@@ -107,6 +108,7 @@
 	let controlPaneComponent;
 
 	let messageInput;
+	let showJiraModal = false;
 
 	let autoScroll = true;
 	let processing = '';
@@ -2594,6 +2596,7 @@
 									bind:webSearchEnabled
 									bind:atSelectedModel
 									bind:showCommands
+									bind:showJiraModal
 									toolServers={$toolServers}
 									{stopResponse}
 									{createMessagePair}
@@ -2648,6 +2651,17 @@
 		</div>
 	{/if}
 </div>
+
+<JiraTicketModal
+	show={showJiraModal}
+	{files}
+	on:submit={() => {
+		showJiraModal = false;
+	}}
+	on:cancel={() => {
+		showJiraModal = false;
+	}}
+/>
 
 <style>
 	::-webkit-scrollbar {

@@ -1182,7 +1182,7 @@ if default_prompt_suggestions == []:
             "content": "I'd like to suggest a new feature.",
         },
         {
-            "title": ["🆘 Get Help", "with a problem you're facing"],
+            "title": ["🔧 Service Request", "get assistance for non-urgent issues."],
             "content": "I need help with a problem I'm facing.",
         },
     ]
