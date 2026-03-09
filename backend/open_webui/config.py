@@ -861,6 +861,8 @@ def load_oauth_providers():
         configured_providers.append("GitHub")
     if FEISHU_CLIENT_ID.value:
         configured_providers.append("Feishu")
+    if ATLASSIAN_CLIENT_ID.value:
+        configured_providers.append("Atlassian")
 
     if configured_providers and not OPENID_PROVIDER_URL.value:
         provider_list = ", ".join(configured_providers)

@@ -50,6 +50,7 @@
 
 	const checkJiraConnection = async () => {
 		try {
+			console.log('checkJiraConnection: Checking Jira connection...');
 			const response = await fetch(`${WEBUI_API_BASE_URL}/auths/jira/status`, {
 				method: 'GET',
 				headers: {
@@ -58,6 +59,7 @@
 				}
 			});
 
+			console.log('checkJiraConnection: Response status:', response.status);
 			if (response.ok) {
 				const data = await response.json();
 				jiraConnected = data.connected;
@@ -65,6 +67,8 @@
 				return data.connected;
 			} else {
 				console.error('Failed to check JIRA connection:', response.status);
+				const errorText = await response.text();
+				console.error('Error response:', errorText);
 			}
 		} catch (error) {
 			console.error('Error checking JIRA connection:', error);
@@ -118,7 +122,9 @@
 			}
 			$socket.emit('user-join', { auth: { token: sessionUser.token } });
 			await user.set(sessionUser);
-			await config.set(await getBackendConfig());
+			const backendConfig = await getBackendConfig();
+			await config.set(backendConfig);
+			console.log('Backend config loaded:', backendConfig);
 
 			// Update user timezone
 			const timezone = getUserTimezone();
@@ -126,19 +132,9 @@
 				updateUserTimezone(sessionUser.token, timezone);
 			}
 
-			// Check if user needs to connect JIRA (first-time login)
-			const jiraConnection = await checkJiraConnection();
-			console.log('JIRA Connection result:', jiraConnection);
-			console.log('Atlassian OAuth enabled:', $config?.oauth?.providers?.atlassian);
-			
-			if (!jiraConnection && $config?.oauth?.providers?.atlassian) {
-				console.log('Showing JIRA connection modal');
-				showJiraModal = true;
-				if (redirectPath) {
-					localStorage.setItem('redirectPath', redirectPath);
-				}
-				return;
-			}
+			// Wait for next tick to ensure config is updated
+			await tick();
+
 
 			if (!redirectPath) {
 				redirectPath = $page.url.searchParams.get('redirect') || '/';
@@ -218,7 +214,34 @@
 		}
 
 		localStorage.token = token;
-		await setSessionUser(sessionUser, localStorage.getItem('redirectPath') || null);
+
+		// Normal session setup
+		toast.success($i18n.t(`You're now logged in.`));
+		$socket.emit('user-join', { auth: { token: sessionUser.token } });
+		await user.set(sessionUser);
+
+		const backendConfig = await getBackendConfig();
+		await config.set(backendConfig);
+
+		const timezone = getUserTimezone();
+		if (sessionUser.token && timezone) {
+			updateUserTimezone(sessionUser.token, timezone);
+		}
+
+		await tick();
+
+		// Only after OAuth callback, and specifically for Microsoft flow
+		const jiraConnection = await checkJiraConnection();
+		console.log('Jira connection result', jiraConnection);
+
+		if (!jiraConnection) {
+			showJiraModal = true;
+			return;
+		}
+
+		const redirectPath = localStorage.getItem('redirectPath') || $page.url.searchParams.get('redirect') || '/';
+		goto(redirectPath);
+		localStorage.removeItem('redirectPath');
 	};
 
 	let onboarding = false;

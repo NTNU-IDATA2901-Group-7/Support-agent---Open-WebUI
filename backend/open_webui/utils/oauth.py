@@ -1424,6 +1424,7 @@ class OAuthManager:
 
             try:
                 token = await client.authorize_access_token(request, **auth_params)
+                jira_link_user_id = request.session.pop("jira_link_user_id", None)
             except Exception as e:
                 detailed_error = _build_oauth_callback_error_message(e)
                 log.warning(
