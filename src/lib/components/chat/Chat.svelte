@@ -2656,6 +2656,7 @@
 <JiraTicketModal
 	show={showJiraModal}
 	{files}
+	messages={createMessagesList(history, history.currentId)}
 	on:submit={() => {
 		showJiraModal = false;
 	}}
