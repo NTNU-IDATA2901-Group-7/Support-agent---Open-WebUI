@@ -1425,6 +1425,8 @@ class OAuthManager:
             try:
                 token = await client.authorize_access_token(request, **auth_params)
                 jira_link_user_id = request.session.pop("jira_link_user_id", None)
+                if jira_link_user_id:
+                    is_jira_linking = True
             except Exception as e:
                 detailed_error = _build_oauth_callback_error_message(e)
                 log.warning(
@@ -1434,25 +1436,6 @@ class OAuthManager:
                     exc_info=True,
                 )
                 raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
-
-            # Check if this is a JIRA linking request (state contains user_id)
-            if provider == "atlassian":
-                try:
-                    state = request.query_params.get("state", "")
-                    if state and "_" in state:
-                        state_parts = state.rsplit("_", 1)
-                        if len(state_parts) == 2:
-                            attempted_user_id = state_parts[1]
-                            # Verify the user exists and is valid
-                            try:
-                                jira_link_user = Users.get_user_by_id(attempted_user_id, db=db)
-                                if jira_link_user:
-                                    is_jira_linking = True
-                                    jira_link_user_id = attempted_user_id
-                            except:
-                                pass
-                except:
-                    pass
 
             # Try to get userinfo from the token first, some providers include it there
             user_data: UserInfo = token.get("userinfo")

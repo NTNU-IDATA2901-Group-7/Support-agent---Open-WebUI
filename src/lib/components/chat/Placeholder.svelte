@@ -29,6 +29,8 @@
 	import FolderPlaceholder from './Placeholder/FolderPlaceholder.svelte';
 	import FolderTitle from './Placeholder/FolderTitle.svelte';
 
+	export let showJiraModal = false;
+
 	const i18n = getContext('i18n');
 
 	export let createMessagePair: Function;
@@ -229,6 +231,7 @@
 					bind:webSearchEnabled
 					bind:atSelectedModel
 					bind:showCommands
+					bind:showJiraModal
 					{toolServers}
 					{stopResponse}
 					{createMessagePair}
@@ -260,6 +263,7 @@
 						[]}
 					inputValue={prompt}
 					{onSelect}
+					onCreateTicket={() => { showJiraModal = true; }}
 				/>
 			</div>
 		</div>

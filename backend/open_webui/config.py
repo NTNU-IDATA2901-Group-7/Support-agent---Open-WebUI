@@ -1244,15 +1244,8 @@ if default_prompt_suggestions == []:
             "content": "Show me a code snippet of a website's sticky header in CSS and JavaScript.",
         },
         {
-            "title": [
-                "Explain options trading",
-                "if I'm familiar with buying and selling stocks",
-            ],
-            "content": "Explain options trading in simple terms if I'm familiar with buying and selling stocks.",
-        },
-        {
-            "title": ["Overcome procrastination", "give me tips"],
-            "content": "Could you start by asking me about instances when I procrastinate the most and then give me some suggestions to overcome it?",
+            "title": ["🔧 Service Request", "get assistance for non-urgent issues."],
+            "content": "I need help with a problem I'm facing.",
         },
     ]
 

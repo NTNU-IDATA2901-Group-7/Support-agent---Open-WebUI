@@ -76,34 +76,10 @@
 		return false;
 	};
 
-	const handleJiraConnect = async () => {
-		try {
-			console.log('handleJiraConnect called');
-			// Request authorization URL from backend for JIRA linking
-			const response = await fetch(`${WEBUI_API_BASE_URL}/auths/jira/link/authorize`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					...(localStorage.token && { Authorization: `Bearer ${localStorage.token}` })
-				}
-			});
-
-			console.log('JIRA link authorize response:', response.status);
-
-			if (response.ok) {
-				const data = await response.json();
-				console.log('Got authorization URL:', data.authorization_url);
-				// Redirect to Atlassian OAuth with linking state
-				window.location.href = data.authorization_url;
-			} else {
-				const errorData = await response.text();
-				console.error('Failed response:', errorData);
-				toast.error('Failed to initiate JIRA connection');
-			}
-		} catch (error) {
-			console.error('Error initiating JIRA connection:', error);
-			toast.error('Error connecting to JIRA');
-		}
+	const handleJiraConnect = () => {
+		// Navigate directly to the backend endpoint, which handles the OAuth redirect.
+		// Authentication uses the "token" cookie set after login.
+		window.location.href = `${WEBUI_API_BASE_URL}/auths/jira/link/authorize`;
 	};
 
 	const handleJiraSkip = async () => {
