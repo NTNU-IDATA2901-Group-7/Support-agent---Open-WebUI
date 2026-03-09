@@ -1,24 +1,18 @@
+import os
 import logging
-from jira import JIRA
-from jira.exceptions import JIRAError
+from httpx import AsyncClient
+from markdownify import markdownify
 
 log = logging.getLogger(__name__)
 
-# Jira Credentials
-domain = "driwno.atlassian.net"
-email = "mathias.lovnes@solwr.com"
-# TODO: Move this api_token to env file
-api_token = "ATATT3xFfGF017g0QKBo_JY37lfkParjecVWpsYF7hJGM_8eIGxbY_gJq25qZi30dBdCV2mnPx0OacHYN0SaXbwD9ifzgcfmM4hVSCvNWpVVccTN_F0vdLuAwhj30ocMEKJJ3AE5hPirN3IY6TDQymsV-rPOYX5TJF5oLiKIa_bOeHElCMbyDAY=CE509555"
-project_key = "TT"
+JIRA_DOMAIN = os.environ.get("JIRA_DOMAIN")
+JIRA_PROJECT_KEY = os.environ.get("JIRA_PROJECT_KEY")
+JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN = os.environ.get("JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN")
 
-jira_client = JIRA(
-    server=f"https://{domain}",
-    basic_auth=(email, api_token)
-)
+BASE_URL = f"https://{JIRA_DOMAIN}/rest/api/3"
 
 
-# TODO: Test if LLM can handle dynamic jql_query param or if it needs to be split into separate fields
-def search_jira_tickets_by_jql(jql_query: str, maxResults: int = 10) -> dict[str, list[dict[str, str]]]:
+async def search_jira_tickets_by_jql(jql_query: str, maxResults: int = 10) -> dict[str, list[dict[str, str]]]:
     """
     Runs a Jira Query Language (JQL) search and returns a structured list of tickets.
 
@@ -44,24 +38,40 @@ def search_jira_tickets_by_jql(jql_query: str, maxResults: int = 10) -> dict[str
     Raises:
         RuntimeError: If the JQL request fails (e.g., network issue, bad authentication).
     """
+    log.info(f"Searching Jira with JQL: '{jql_query}' (maxResults={maxResults})")
+    headers = {
+        "Authorization": f"Bearer {JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN}",
+        "Accept": "application/json",
+    }
+    params = {
+        "jql": jql_query,
+        "maxResults": maxResults,
+        "fields": "summary,description,status",
+        "expand": "renderedFields",
+    }
     try:
-        issues = jira_client.search_issues(jql_query, maxResults=maxResults)
-    except JIRAError as e:
-        log.exception(f"JQL request failed: {e.status_code} - {e.text}")
-        raise RuntimeError(f"JQL request failed: {e.status_code}")
+        async with AsyncClient() as client:
+            response = await client.get(f"{BASE_URL}/search", headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
+    except Exception as e:
+        log.exception(f"JQL request failed: {e}")
+        raise RuntimeError(f"JQL request failed: {e}")
 
+    issues = data.get("issues", [])
     if not issues:
-        log.info(f"No tickets found matching that JQL: {jql_query}")
+        log.info(f"No tickets found matching JQL: {jql_query}")
         return {"tickets": []}
 
     results = []
     for issue in issues:
+        rendered_description = (issue.get("renderedFields") or {}).get("description") or ""
         results.append({
-            "id": issue.id,
-            "key": issue.key,
-            "summary": issue.fields.summary or "No summary",
-            "description": issue.fields.description or "",
-            "status": issue.fields.status.name or "Unknown status"
+            "id": issue["id"],
+            "key": issue["key"],
+            "summary": issue["fields"].get("summary") or "No summary",
+            "description": markdownify(rendered_description) if rendered_description else "",
+            "status": (issue["fields"].get("status") or {}).get("name") or "Unknown status",
         })
 
     log.info(f"Found {len(results)} issues from JQL: '{jql_query}'")
@@ -71,14 +81,12 @@ def search_jira_tickets_by_jql(jql_query: str, maxResults: int = 10) -> dict[str
     return {"tickets": results}
 
 
-
-# TODO: Add better logging
-def get_jira_ticket_details_by_key(ticket_key: str) -> dict[str, dict[str, str]]:
+async def get_jira_ticket_details_by_key(ticket_key: str) -> dict[str, dict[str, str]]:
     """
     Fetches the full details of a specific ticket.
 
     Args:
-        issue_key (str): The Jira issue key (e.g., "TT-123").
+        ticket_key (str): The Jira issue key (e.g., "TT-123").
 
     Returns:
         dict[str, str]: A dictionary with detailed ticket info:
@@ -93,42 +101,43 @@ def get_jira_ticket_details_by_key(ticket_key: str) -> dict[str, dict[str, str]]
     Raises:
         RuntimeError: If the ticket cannot be fetched.
     """
+    log.info(f"Fetching Jira ticket: {ticket_key}")
+    headers = {
+        "Authorization": f"Bearer {JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN}",
+        "Accept": "application/json",
+    }
     try:
-        issue = jira_client.issue(ticket_key)
-    except JIRAError as e:
-        log.error(f"Failed to fetch ticket {ticket_key}: {e.status_code} - {e.text}")
-        raise RuntimeError(f"Failed to fetch ticket {ticket_key}: {e.status_code}")
+        async with AsyncClient() as client:
+            response = await client.get(
+                f"{BASE_URL}/issue/{ticket_key}",
+                headers=headers,
+                params={"expand": "renderedFields"},
+            )
+        response.raise_for_status()
+        issue = response.json()
+    except Exception as e:
+        log.error(f"Failed to fetch ticket {ticket_key}: {e}")
+        raise RuntimeError(f"Failed to fetch ticket {ticket_key}: {e}")
 
-    fields = issue.fields
+    fields = issue["fields"]
+    rendered_description = (issue.get("renderedFields") or {}).get("description") or ""
 
-    assignee_obj = fields.assignee
+    assignee_obj = fields.get("assignee")
     if assignee_obj:
-        assignee_info = f"{assignee_obj.displayName} ({assignee_obj.emailAddress})"
+        assignee_info = f"{assignee_obj['displayName']} ({assignee_obj.get('emailAddress', '')})"
     else:
         assignee_info = "Unassigned"
-    
-    result =  {
-        "key": issue.key,
-        "summary": fields.summary or "No summary",
-        "description": fields.description or "",
-        "status": getattr(fields.status, "name", "Unknown status"),
-        "priority": getattr(fields.priority, "name", "None"),
-        "assignee": assignee_info,
-        "created": getattr(fields, "created", "Unknown")
+
+    log.info(f"Fetched ticket {ticket_key}: '{fields.get('summary')}' (Status: {(fields.get('status') or {}).get('name')})")
+
+    return {
+        "ticket": {
+            "key": issue["key"],
+            "summary": fields.get("summary") or "No summary",
+            "description": markdownify(rendered_description) if rendered_description else "",
+            "status": (fields.get("status") or {}).get("name") or "Unknown status",
+            "priority": (fields.get("priority") or {}).get("name") or "None",
+            "assignee": assignee_info,
+            "created": fields.get("created") or "Unknown",
+        }
     }
-
-    return {"ticket": result}
-
-
-
-
-
-# ------------------------------------------------------------------
-# ---------------------- Methods for testing -----------------------
-
-# --- search_by_jql ---
-# testsupp_tickets = search_by_jql("project = TESTSUPP")
-# print(testsupp_tickets)
-
-# --- get_ticket_details ---
-# print(get_ticket_details('TESTSUPP-25'))
