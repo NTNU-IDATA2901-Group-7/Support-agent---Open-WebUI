@@ -84,7 +84,7 @@
 
 <div class="h-40 w-full">
 	{#if filteredPrompts.length > 0 || onCreateTicket}
-		<div role="list" class="max-h-40 overflow-auto scrollbar-none items-start {className}">
+		<div role="list" class="overflow-auto scrollbar-none items-start {className}">
 			{#if onCreateTicket}
 				<button
 					role="listitem"
@@ -122,16 +122,16 @@
 							<div
 								class="font-medium dark:text-gray-300 dark:group-hover:text-gray-200 transition line-clamp-1"
 							>
-								{prompt.title[0]}
+								{$i18n.t(prompt.title[0])}
 							</div>
 							<div class="text-xs text-gray-600 dark:text-gray-400 font-normal line-clamp-1">
-								{prompt.title[1]}
+								{$i18n.t(prompt.title[1])}
 							</div>
 						{:else}
 							<div
 								class="font-medium dark:text-gray-300 dark:group-hover:text-gray-200 transition line-clamp-1"
 							>
-								{prompt.content}
+								{$i18n.t(prompt.content)}
 							</div>
 							<div class="text-xs text-gray-600 dark:text-gray-400 font-normal line-clamp-1">
 								{$i18n.t('Prompt')}

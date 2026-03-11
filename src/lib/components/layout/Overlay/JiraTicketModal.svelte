@@ -3,6 +3,7 @@
 	import { toast } from 'svelte-sonner';
 	import XMark from '../../icons/XMark.svelte';
 	import { showSidebar } from '$lib/stores';
+	import i18n from '$lib/i18n';
 
 	export let show = false;
 	export let files = [];
@@ -27,13 +28,13 @@
 		errors = {};
 
 		if (!title.trim()) {
-			errors.title = 'Title is required';
+			errors.title = $i18n.t('Title is required');
 		}
 		if (!description.trim()) {
-			errors.description = 'Description is required';
+			errors.description = $i18n.t('Description is required');
 		}
 		if (!affectedComponents.trim()) {
-			errors.affectedComponents = 'Affected components are required';
+			errors.affectedComponents = $i18n.t('Affected components are required');
 		}
 
 		return Object.keys(errors).length === 0;
@@ -113,7 +114,7 @@
 		<div class="w-full max-w-2xl rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-300 dark:border-gray-800 overflow-hidden">
 			<!-- Header -->
 			<div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 p-6">
-				<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Create JIRA Ticket</h2>
+				<h2 class="text-xl font-semibold text-gray-900 dark:text-white">{$i18n.t('Create JIRA Ticket')}</h2>
 				<button
 					on:click={handleCancel}
 					class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
@@ -127,13 +128,13 @@
 				<!-- Title -->
 				<div>
 					<label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Title <span class="text-red-500">*</span>
+						{$i18n.t('Title')} <span class="text-red-500">*</span>
 					</label>
 					<input
 						id="title"
 						type="text"
 						bind:value={title}
-						placeholder="Describe the issue briefly"
+						placeholder={$i18n.t('Describe the issue briefly')}
 						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-white transition-colors"
 					/>
 					{#if errors.title}
@@ -144,12 +145,12 @@
 				<!-- Description -->
 				<div>
 					<label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Description <span class="text-red-500">*</span>
+						{$i18n.t('Description')} <span class="text-red-500">*</span>
 					</label>
 					<textarea
 						id="description"
 						bind:value={description}
-						placeholder="Provide detailed information about the issue"
+						placeholder={$i18n.t('Provide detailed information about the issue')}
 						rows="5"
 						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-white resize-none transition-colors"
 					/>
@@ -161,7 +162,7 @@
 				<!-- Urgency -->
 				<div>
 					<label for="urgency" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Urgency <span class="text-red-500">*</span>
+						{$i18n.t('Urgency')} <span class="text-red-500">*</span>
 					</label>
 					<select
 						id="urgency"
@@ -177,13 +178,13 @@
 				<!-- Affected Components -->
 				<div>
 					<label for="components" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Affected Components <span class="text-red-500">*</span>
+						{$i18n.t('Affected Components')} <span class="text-red-500">*</span>
 					</label>
 					<input
 						id="components"
 						type="text"
 						bind:value={affectedComponents}
-						placeholder="e.g., Backend, Frontend, Database (comma-separated)"
+						placeholder={$i18n.t('e.g., Backend, Frontend, Database (comma-separated)')}
 						class="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-white transition-colors"
 					/>
 					{#if errors.affectedComponents}
@@ -194,13 +195,13 @@
 				<!-- Attachments -->
 				<div>
 					<label for="attachments" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Attachments
+						{$i18n.t('Attachments')}
 					</label>
 					<div class="flex items-center gap-2 mb-3">
 						<label
 							class="flex-1 flex items-center justify-center px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-800 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
 						>
-							<span class="text-sm font-medium text-gray-700 dark:text-gray-300">Choose files</span>
+							<span class="text-sm font-medium text-gray-700 dark:text-gray-300">{$i18n.t('Choose files')}</span>
 							<input
 								id="attachments"
 								type="file"
@@ -241,7 +242,7 @@
                     disabled={isSubmitting}
                     class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium disabled:opacity-50"
                 >
-                    Cancel
+                    {$i18n.t('Cancel')}
                 </button>
                 <button
                     type="button"
@@ -249,7 +250,7 @@
                     disabled={isSubmitting}
                     class="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
                 >
-                    {isSubmitting ? 'Creating...' : 'Create Ticket'}
+                    {isSubmitting ? $i18n.t('Creating...') : $i18n.t('Create Ticket')}
                 </button>
             </div>
 		</div>
