@@ -1228,24 +1228,12 @@ except Exception as e:
 if default_prompt_suggestions == []:
     default_prompt_suggestions = [
         {
-            "title": ["Help me study", "vocabulary for a college entrance exam"],
-            "content": "Help me study vocabulary: write a sentence for me to fill in the blank, and I'll try to pick the correct option.",
+            "title": ["🐞 Report a Bug", "describe an issue you encountered"],
+            "content": "I want to report a bug.",
         },
         {
-            "title": ["Give me ideas", "for what to do with my kids' art"],
-            "content": "What are 5 creative things I could do with my kids' art? I don't want to throw them away, but it's also so much clutter.",
-        },
-        {
-            "title": ["Tell me a fun fact", "about the Roman Empire"],
-            "content": "Tell me a random fun fact about the Roman Empire",
-        },
-        {
-            "title": ["Show me a code snippet", "of a website's sticky header"],
-            "content": "Show me a code snippet of a website's sticky header in CSS and JavaScript.",
-        },
-        {
-            "title": ["🔧 Service Request", "get assistance for non-urgent issues."],
-            "content": "I need help with a problem I'm facing.",
+            "title": ["💡 Suggest a Feature", "tell us your idea"],
+            "content": "I'd like to suggest a new feature.",
         },
     ]
 
