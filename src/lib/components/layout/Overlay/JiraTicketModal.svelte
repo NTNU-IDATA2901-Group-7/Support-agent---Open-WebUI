@@ -64,7 +64,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    project_key: 'SUP', // TODO: make this configurable
+                    project_key: 'TESTSUPP', // TODO: make this configurable
                     summary: title,
                     description: description,
                     priority: urgency,

@@ -29,7 +29,7 @@ router = APIRouter()
 JIRA_CLOUD_ID = os.environ.get("JIRA_CLOUD_ID")
 JIRA_COLLECTION = "jira_support_tickets"
 JIRA_BASE_URL = f"https://api.atlassian.com/ex/jira/{JIRA_CLOUD_ID}"
-JIRA_OAUTH_PROVIDER = os.environ.get("JIRA_OAUTH_PROVIDER")
+JIRA_OAUTH_PROVIDER = os.environ.get("ATLASSIAN_CLIENT_ID")
 
 # =================================================================================
 # SYNC
@@ -150,13 +150,16 @@ async def create_issue(
         client_id=JIRA_OAUTH_PROVIDER,
         force_refresh=False
     )
+    
+    if not oauth_token_dict:
+        log.warning(f"No valid JIRA OAuth token found for user_id {user.id}, client_id {JIRA_OAUTH_PROVIDER}")
+        raise HTTPException(status_code=401, detail="No JIRA OAuth session found")
 
     oauth_access_token = oauth_token_dict.get("access_token")
 
     if not oauth_access_token:
-        log.warning(f"No valid JIRA OAuth token found for user_id {user.id}, client_id {JIRA_OAUTH_PROVIDER}")
+        log.warning(f"OAuth token dict missing access_token for user_id {user.id}")
         raise HTTPException(status_code=401, detail="No JIRA OAuth session found")
-
 
     url = f"{JIRA_BASE_URL}/rest/api/3/issue"
 
