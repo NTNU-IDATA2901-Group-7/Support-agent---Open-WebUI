@@ -2419,21 +2419,21 @@
 	{#if !loading}
 		<div in:fade={{ duration: 50 }} class="w-full h-full flex flex-col">
 			{#if $selectedFolder && $selectedFolder?.meta?.background_image_url}
-                            <div
-                                class="sidebar-new-chat-icon size-6 rounded-full group-hover:hidden bg-center bg-cover"
-                                style="background-image: url({WEBUI_BASE_URL + '/static/solwr.png'});"
-                                aria-hidden="true"
-                            ></div>
+				<div
+					class="sidebar-new-chat-icon size-6 rounded-full group-hover:hidden bg-center bg-cover"
+					style="background-image: url({WEBUI_BASE_URL + '/static/solwr.png'});"
+					aria-hidden="true"
+				></div>
 
 				<div
 					class="absolute top-0 left-0 w-full h-full bg-linear-to-t from-white to-white/85 dark:from-gray-900 dark:to-gray-900/90 z-0"
 				/>
 			{:else if $settings?.backgroundImageUrl ?? $config?.license_metadata?.background_image_url ?? null}
-                            <div
-                                class="sidebar-new-chat-icon size-6 rounded-full group-hover:hidden bg-center bg-cover"
-                                style="background-image: url({WEBUI_BASE_URL + '/static/solwr.png'});"
-                                aria-hidden="true"
-                            ></div>
+				<div
+					class="sidebar-new-chat-icon size-6 rounded-full group-hover:hidden bg-center bg-cover"
+					style="background-image: url({WEBUI_BASE_URL + '/static/solwr.png'});"
+					aria-hidden="true"
+				></div>
 
 				<div
 					class="absolute top-0 left-0 w-full h-full bg-linear-to-t from-white to-white/85 dark:from-gray-900 dark:to-gray-900/90 z-0"
@@ -2655,7 +2655,7 @@
 
 <JiraTicketModal
 	show={showJiraModal}
-	{files}
+	files={createMessagesList(history, history.currentId).flatMap((m) => m.files ?? [])}
 	messages={createMessagesList(history, history.currentId)}
 	on:submit={() => {
 		showJiraModal = false;
