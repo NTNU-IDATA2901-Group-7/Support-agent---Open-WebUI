@@ -26,7 +26,6 @@ from open_webui.models.users import (
 )
 from open_webui.models.groups import Groups
 from open_webui.models.oauth_sessions import OAuthSessions
-from open_webui.models.jira_connections import JiraConnections, JiraConnectionModel
 
 from open_webui.constants import ERROR_MESSAGES, WEBHOOK_MESSAGES
 from open_webui.env import (
@@ -1287,117 +1286,56 @@ async def get_api_key(
 
 
 ############################
-# JIRA Connection Endpoints
+# JIRA OAuth
 ############################
 
 
-@router.get("/jira/connection")
-async def get_jira_connection(user=Depends(get_current_user)):
-    """Check if user has a JIRA connection"""
-    connection = JiraConnections.get_connection_by_user_id(user.id)
-    if connection:
-        return {
-            "connected": True,
-            "atlassian_account_id": connection.atlassian_account_id,
-        }
-    else:
-        return {"connected": False}
-
-
 @router.get("/jira/link/authorize")
-async def jira_link_authorize(request: Request, user=Depends(get_current_user)):
-    """Initiate JIRA linking for authenticated user"""
+async def jira_link_authorize(
+    request: Request,
+    user=Depends(get_current_user),
+):
+    """
+    Redirect the user to Atlassian OAuth for linking their JIRA account.
+    Called via browser navigation (GET), returns a RedirectResponse.
+    """
     try:
-        from open_webui.config import ATLASSIAN_REDIRECT_URI
-
         oauth_manager = request.app.state.oauth_manager
-        if "atlassian" not in oauth_manager._clients or oauth_manager._clients["atlassian"] is None:
-            raise HTTPException(400, detail="Atlassian OAuth not configured")
 
-        client = oauth_manager.get_client("atlassian")
-        redirect_uri = ATLASSIAN_REDIRECT_URI.value
-
-        # Store user ID in session so the callback knows this is a JIRA linking request
+        # Store user ID in session so the callback knows this is a JIRA linking flow
         request.session["jira_link_user_id"] = user.id
 
-        # Let authlib handle state generation, session storage, and redirect
-        return await client.authorize_redirect(
-            request, redirect_uri, audience="api.atlassian.com"
-        )
+        # Redirect to Atlassian OAuth (handle_login returns a RedirectResponse)
+        return await oauth_manager.handle_login(request, "atlassian")
 
-    except HTTPException:
-        raise
     except Exception as e:
-        log.error(f"Error initiating JIRA link: {str(e)}")
-        raise HTTPException(500, detail="Failed to initiate JIRA connection")
+        log.error(f"Error generating JIRA authorization URL: {str(e)}")
+        raise HTTPException(500, detail="Failed to generate JIRA authorization URL")
 
 
 @router.get("/jira/status")
-async def get_jira_status(user=Depends(get_current_user)):
-    """Get JIRA connection status for the user"""
-    connection = JiraConnections.get_connection_by_user_id(user.id)
-    if connection:
-        return {
-            "connected": True,
-            "atlassian_account_id": connection.atlassian_account_id,
-            "cloud_id": connection.cloud_id,
-        }
-    else:
-        return {"connected": False}
-
-
-@router.post("/jira/connection")
-async def save_jira_connection(
+async def jira_status(
+    request: Request,
     user=Depends(get_current_user),
-    access_token: str = None,
-    refresh_token: Optional[str] = None,
-    expires_at: int = None,
-    atlassian_account_id: str = None,
-    cloud_id: Optional[str] = None,
+    db: Session = Depends(get_session),
 ):
-    """Save JIRA OAuth tokens for the user"""
+    """
+    Check if the current user has a connected JIRA/Atlassian account
+    by looking for an Atlassian OAuthSession.
+    """
     try:
-        connection = JiraConnections.insert_new_connection(
-            user_id=user.id,
-            atlassian_account_id=atlassian_account_id,
-            access_token=access_token,
-            refresh_token=refresh_token,
-            expires_at=expires_at,
-            cloud_id=cloud_id,
+        session = OAuthSessions.get_session_by_provider_and_user_id(
+            "atlassian", user.id, db=db
         )
-        return {
-            "connected": True,
-            "message": "JIRA connection saved successfully",
-        }
-    except Exception as e:
-        log.error(f"Error saving JIRA connection: {str(e)}")
-        raise HTTPException(500, detail="Failed to save JIRA connection")
 
-
-@router.get("/admin/jira/connection/{user_id}")
-async def get_user_jira_connection(user_id: str, user=Depends(get_admin_user)):
-    """Admin: get JIRA connection info for a specific user"""
-    connection = JiraConnections.get_connection_by_user_id(user_id)
-    if connection:
-        return {
-            "connected": True,
-            "atlassian_account_id": connection.atlassian_account_id,
-            "cloud_id": connection.cloud_id,
-            "expires_at": connection.expires_at,
-            "created_at": connection.created_at,
-        }
-    return {"connected": False}
-
-
-@router.delete("/jira/connection")
-async def delete_jira_connection(user=Depends(get_current_user)):
-    """Delete JIRA connection for the user"""
-    try:
-        success = JiraConnections.delete_connection_by_user_id(user.id)
-        if success:
-            return {"message": "JIRA connection deleted"}
+        if session:
+            return {
+                "connected": True,
+                "atlassian_account_id": session.token.get("atlassian_account_id"),
+                "cloud_id": session.token.get("cloud_id"),
+            }
         else:
-            raise HTTPException(404, detail="JIRA connection not found")
+            return {"connected": False}
     except Exception as e:
-        log.error(f"Error deleting JIRA connection: {str(e)}")
-        raise HTTPException(500, detail="Failed to delete JIRA connection")
+        log.error(f"Error checking JIRA connection status: {str(e)}")
+        raise HTTPException(500, detail="Failed to check JIRA connection status")
