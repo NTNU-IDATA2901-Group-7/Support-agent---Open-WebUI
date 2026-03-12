@@ -491,15 +491,17 @@
 							/>
 						</svg>
 					{:else if tab.id === 'vector-database'}
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 24 24"
-							fill="currentColor"
+						<svg 
+							xmlns="http://www.w3.org/2000/svg" 
+							fill="none" 
+							viewBox="0 0 24 24" 
+							stroke-width="1.5" 
+							stroke="currentColor" 
 							class="size-4"
-						>
-							<path
-								d="M12 2c5.523 0 10 2.239 10 5v10c0 2.761-4.477 5-10 5S2 19.761 2 17V7c0-2.761 4.477-5 10-5m0 2c-4.418 0-8 1.79-8 4v2.5c0-1.933 3.582-3.5 8-3.5s8 1.567 8 3.5V8c0-2.21-3.582-4-8-4m0 8c-4.418 0-8 1.79-8 4v2.5c0-1.933 3.582-3.5 8-3.5s8 1.567 8 3.5V14c0-2.21-3.582-4-8-4"
-							/>
+							>
+							<path 
+								stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-2.25-1.313M21 7.5v2.25m0-2.25-2.25 1.313M3 7.5l2.25-1.313M3 7.5l2.25 1.313M3 7.5v2.25m9 3 2.25-1.313M12 12.75l-2.25-1.313M12 12.75V15m0 6.75 2.25-1.313M12 21.75V19.5m0 2.25-2.25-1.313m0-16.875L12 2.25l2.25 1.313M21 14.25v2.25l-2.25 1.313m-13.5 0L3 16.5v-2.25" 
+								/>
 						</svg>
 					{:else if tab.id === 'db'}
 						<svg
