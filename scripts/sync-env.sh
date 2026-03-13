@@ -1,15 +1,16 @@
-#!/bin/bash
-# Adds any keys from .env.example that are missing from .env
-# Never overwrites existing values
+#!/usr/bin/env python3
+"""Adds any keys from .env.example that are missing from .env.
+Never overwrites existing values."""
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-
-python3 - "$ROOT" <<'EOF'
 import os, re, sys, shutil
 
-root = sys.argv[1]
+root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 example = os.path.join(root, ".env.example")
 env = os.path.join(root, ".env")
+
+if not os.path.exists(example):
+    print(f"Error: {example} not found")
+    sys.exit(1)
 
 if not os.path.exists(env):
     shutil.copy(example, env)
@@ -28,7 +29,7 @@ with open(example) as f:
 i = 0
 while i < len(lines):
     line = lines[i]
-    match = re.match(r'^([A-Z_][A-Z0-9_]*)\s*=(.*)$', line)
+    match = re.match(r"^([A-Z_][A-Z0-9_]*)\s*=(.*)$", line)
     if match:
         key = match.group(1)
         value = match.group(2)
@@ -38,7 +39,7 @@ while i < len(lines):
             i += 1
             while i < len(lines):
                 block += lines[i]
-                if lines[i].rstrip('\n').endswith('"'):
+                if lines[i].rstrip("\n").endswith('"'):
                     break
                 i += 1
         blocks.append((key, block))
@@ -53,4 +54,3 @@ with open(env, "a") as f:
             added += 1
 
 print(".env is up to date" if added == 0 else f"{added} new key(s) added — fill in your values")
-EOF

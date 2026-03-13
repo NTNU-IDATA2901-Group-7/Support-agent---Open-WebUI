@@ -2,6 +2,7 @@
 """HTTP endpoints for JIRA sync and create_issue"""
 
 import os
+import json
 import logging
 from httpx import AsyncClient
 
@@ -129,6 +130,68 @@ def _get_jira_base_url(session) -> str:
             detail="No Jira cloud_id found. Please reconnect your Atlassian account.",
         )
     return f"https://api.atlassian.com/ex/jira/{cloud_id}"
+
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+OPENAI_API_BASE_URL = os.environ.get("OPENAI_API_BASE_URL")
+OPENAI_API_VERSION = os.environ.get("RAG_AZURE_OPENAI_API_VERSION")
+
+# =================================================================================
+# AUTOFILL
+# =================================================================================
+
+class JiraAutofillForm(BaseModel):
+    messages: list[dict]
+
+
+@router.post("/autofill")
+async def autofill_jira(
+    form: JiraAutofillForm,
+    user=Depends(get_verified_user),
+) -> dict:
+    """
+    Given a conversation, call Azure OpenAI to suggest a Jira ticket title,
+    description, and urgency (A/B/C).
+    """
+    system_prompt = (
+        "You are an IT support ticket assistant. Given a conversation between a user "
+        "and an AI support agent, generate a Jira ticket with the following fields:\n"
+        "- title: A concise summary of the issue (max 100 characters)\n"
+        "- description: A detailed description including what the user tried and expected behaviour\n"
+        "- urgency: One of 'A', 'B', or 'C' where:\n"
+        "    A = Critical/blocking, major system failure or complete inability to work\n"
+        "    B = Significant impact, workaround exists\n"
+        "    C = Minor issue, question, or low-priority request\n\n"
+        "Respond with ONLY a valid JSON object with keys 'title', 'description', and 'urgency'. No other text."
+    )
+
+    conversation = [{"role": "system", "content": system_prompt}]
+    for m in form.messages:
+        if m.get("role") in ("user", "assistant") and m.get("content"):
+            conversation.append({"role": m["role"], "content": m["content"]})
+
+    url = f"{OPENAI_API_BASE_URL}/chat/completions?api-version={OPENAI_API_VERSION}"
+    headers = {
+        "api-key": OPENAI_API_KEY,
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "messages": conversation,
+        "temperature": 0.3,
+        "max_tokens": 500,
+    }
+
+    try:
+        async with AsyncClient() as client:
+            response = await client.post(url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        content = response.json()["choices"][0]["message"]["content"]
+        return json.loads(content)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Failed to parse AI response as JSON")
+    except Exception as e:
+        log.error(f"Jira autofill failed: {e}")
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 # =================================================================================
