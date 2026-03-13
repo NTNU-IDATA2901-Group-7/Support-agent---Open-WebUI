@@ -837,6 +837,7 @@ def load_oauth_providers():
                 userinfo_endpoint="https://api.atlassian.com/me",
                 client_kwargs={
                     "scope": ATLASSIAN_OAUTH_SCOPE.value,
+                    "token_endpoint_auth_method": "client_secret_post",
                     **(
                         {"timeout": int(OAUTH_TIMEOUT.value)}
                         if OAUTH_TIMEOUT.value
@@ -848,6 +849,7 @@ def load_oauth_providers():
             return client
 
         OAUTH_PROVIDERS["atlassian"] = {
+            "redirect_uri": ATLASSIAN_REDIRECT_URI.value,
             "register": atlassian_oauth_register,
             "sub_claim": "account_id",
         }

@@ -12,17 +12,45 @@
 
 	let title = '';
 	let description = '';
-	let urgency = 'medium';
+	let urgency = '';
 	let affectedComponents = '';
 	let attachedFiles: File[] = [];
 	let errors: { [key: string]: string } = {};
 	let isSubmitting = false;
 
+	let issueTypes: { id: string; name: string; subtask: boolean }[] = [];
+	let selectedIssueType = '';
+	let loadingMeta = false;
+
+	const PROJECT_KEY = 'TESTSUPP';
+
 	const urgencyOptions = [
 		{ value: 'A', label: 'A' },
 		{ value: 'B', label: 'B' },
-		{ value: 'C', label: 'C' } 
+		{ value: 'C', label: 'C' }
 	];
+
+	async function fetchProjectMeta() {
+		loadingMeta = true;
+		try {
+			const res = await fetch(`/api/v1/jira/project-meta/${PROJECT_KEY}`);
+			if (res.ok) {
+				const data = await res.json();
+				issueTypes = (data.issue_types || []).filter((t: any) => !t.subtask);
+				if (issueTypes.length > 0 && !selectedIssueType) {
+					selectedIssueType = issueTypes[0].name;
+				}
+			}
+		} catch (e) {
+			console.warn('Failed to fetch JIRA project meta:', e);
+		} finally {
+			loadingMeta = false;
+		}
+	}
+
+	$: if (show && issueTypes.length === 0 && !loadingMeta) {
+		fetchProjectMeta();
+	}
 
 	function validateForm(): boolean {
 		errors = {};
@@ -64,11 +92,11 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    project_key: 'TESTSUPP', // TODO: make this configurable
+                    project_key: PROJECT_KEY,
                     summary: title,
                     description: description,
                     priority: urgency,
-                    issue_type: 'Task'
+                    issue_type: selectedIssueType || 'Task'
                 })
             });
 
@@ -97,10 +125,11 @@
 	function resetForm() {
 		title = '';
 		description = '';
-		urgency = 'medium';
+		urgency = 'A';
 		affectedComponents = '';
 		attachedFiles = [];
 		errors = {};
+		selectedIssueType = issueTypes.length > 0 ? issueTypes[0].name : '';
 	}
 </script>
 
@@ -174,6 +203,34 @@
 						{/each}
 					</select>
 				</div>
+
+				<!-- Issue Type -->
+				<!--<div>
+					<label for="issueType" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						{$i18n.t('Issue Type')} <span class="text-red-500">*</span>
+					</label>
+					{#if loadingMeta}
+						<p class="text-sm text-gray-500">{$i18n.t('Loading issue types...')}</p>
+					{:else if issueTypes.length > 0}
+						<select
+							id="issueType"
+							bind:value={selectedIssueType}
+							class="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+						>
+							{#each issueTypes as it}
+								<option value={it.name}>{it.name}</option>
+							{/each}
+						</select>
+					{:else}
+						<input
+							id="issueType"
+							type="text"
+							bind:value={selectedIssueType}
+							placeholder="Task"
+							class="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-white transition-colors"
+						/>
+					{/if}
+				</div> -->
 
 				<!-- Affected Components -->
 				<div>
