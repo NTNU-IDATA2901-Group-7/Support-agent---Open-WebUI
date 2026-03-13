@@ -106,7 +106,7 @@
 					summary: title,
 					description: description,
 					priority: urgency,
-					issue_type: selectedIssueType || 'Task'
+					issue_type: selectedIssueType || 'Task',
 					file_ids: files.map((f) => f.id).filter(Boolean) // Filters out falsy values
 				})
 			});
@@ -388,7 +388,7 @@
 						disabled={isAutofilling || messages.length === 0}
 						class="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
 					>
-						{isAutofilling ? 'Filling...' : 'Autofill with AI'}
+						{isAutofilling ? $i18n.t('Filling...') : $i18n.t('Autofill with AI')}
 					</button>
 					{#if previousFields}
 						<button
@@ -396,7 +396,7 @@
 							on:click={handleRevert}
 							class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
 						>
-							Revert
+							{$i18n.t('Revert')}
 						</button>
 					{/if}
 					<button
@@ -404,7 +404,7 @@
 						on:click={resetForm}
 						class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
 					>
-						Reset Form
+						{$i18n.t('Reset Form')}
 					</button>
 				</div>
 				<div class="flex items-center gap-3">
