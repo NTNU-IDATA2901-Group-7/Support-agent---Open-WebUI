@@ -37,6 +37,7 @@
 	const PROJECT_KEY = 'TESTSUPP';
 
 	const urgencyOptions = [
+		{ value: '', label: '' },
 		{ value: 'A', label: 'A' },
 		{ value: 'B', label: 'B' },
 		{ value: 'C', label: 'C' }
