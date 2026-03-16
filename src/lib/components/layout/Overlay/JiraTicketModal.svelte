@@ -7,7 +7,7 @@
 
 	export let show = false;
 	export let files = [];
-	export let messages = [];
+	export let messages: { role: string; content: string }[] = [];
 
 	const dispatch = createEventDispatcher();
 
@@ -15,7 +15,13 @@
 	let description = '';
 	let urgency = '';
 	let affectedComponents = '';
-	let attachedFiles: File[] = [];
+	let allAttachments = [];
+	let removedFiles = new Set();
+	$: if (show) {
+		const existing = new Set(allAttachments);
+		const newChatFiles = (files ?? []).filter((f) => !existing.has(f) && !removedFiles.has(f));
+		allAttachments = [...allAttachments, ...newChatFiles];
+	}
 	let errors: { [key: string]: string } = {};
 	let isSubmitting = false;
 	let isAutofilling = false;
@@ -74,13 +80,14 @@
 	function handleFileUpload(event: Event) {
 		const input = event.target as HTMLInputElement;
 		if (input.files) {
-			attachedFiles = [...attachedFiles, ...Array.from(input.files)];
+			allAttachments = [...allAttachments, ...Array.from(input.files)];
 		}
 		input.value = '';
 	}
 
 	function removeFile(index: number) {
-		attachedFiles = attachedFiles.filter((_, i) => i !== index);
+		removedFiles.add(allAttachments[index]);
+		allAttachments = allAttachments.filter((_, i) => i !== index);
 	}
 
 	async function handleSubmit() {
@@ -99,7 +106,8 @@
 					summary: title,
 					description: description,
 					priority: urgency,
-					issue_type: selectedIssueType || 'Task'
+					issue_type: selectedIssueType || 'Task',
+					file_ids: files.map((f) => f.id).filter(Boolean) // Filters out falsy values
 				})
 			});
 
@@ -156,13 +164,16 @@
 			title = result.title ?? title;
 			description = result.description ?? description;
 			urgency = result.urgency ?? urgency;
+			affectedComponents = result.affectedComponents ?? affectedComponents;
 			console.log(
 				'Fields populated — title:',
 				title,
 				'description:',
 				description,
 				'urgency:',
-				urgency
+				urgency,
+				'affectedComponents:',
+				affectedComponents
 			);
 		} catch (error) {
 			console.error('Autofill error:', error);
@@ -173,7 +184,6 @@
 	}
 
 	function handleCancel() {
-		resetForm();
 		dispatch('cancel');
 	}
 
@@ -182,7 +192,8 @@
 		description = '';
 		urgency = '';
 		affectedComponents = '';
-		attachedFiles = [];
+		allAttachments = [];
+		removedFiles = new Set();
 		errors = {};
 		selectedIssueType = issueTypes.length > 0 ? issueTypes[0].name : '';
 		previousFields = null;
@@ -201,34 +212,13 @@
 			<div
 				class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 p-6"
 			>
-				<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-					{$i18n.t('Create JIRA Ticket')}
-				</h2>
-				<div class="flex items-center gap-2">
-					{#if previousFields}
-						<button
-							type="button"
-							on:click={handleRevert}
-							class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-						>
-							Revert
-						</button>
-					{/if}
-					<button
-						type="button"
-						on:click={handleAutofill}
-						disabled={isAutofilling || messages.length === 0}
-						class="px-3 py-1.5 text-sm rounded-lg bg-white text-black hover:bg-gray-100 transition-colors disabled:opacity-50"
-					>
-						{isAutofilling ? 'Filling...' : 'Autofill with AI'}
-					</button>
-					<button
-						on:click={handleCancel}
-						class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-					>
-						<XMark className="size-5" />
-					</button>
-				</div>
+				<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Create JIRA Ticket</h2>
+				<button
+					on:click={handleCancel}
+					class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+				>
+					<XMark className="size-5" />
+				</button>
 			</div>
 
 			<!-- Form -->
@@ -366,9 +356,9 @@
 					</div>
 
 					<!-- Attached Files List -->
-					{#if attachedFiles.length > 0}
+					{#if allAttachments.length > 0}
 						<div class="space-y-2">
-							{#each attachedFiles as file, index}
+							{#each allAttachments as file, index}
 								<div
 									class="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg"
 								>
@@ -389,24 +379,52 @@
 
 			<!-- Footer -->
 			<div
-				class="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-800 p-6"
+				class="flex items-center justify-between border-t border-gray-200 dark:border-gray-800 p-6"
 			>
-				<button
-					type="button"
-					on:click={handleCancel}
-					disabled={isSubmitting}
-					class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium disabled:opacity-50"
-				>
-					{$i18n.t('Cancel')}
-				</button>
-				<button
-					type="button"
-					on:click={handleSubmit}
-					disabled={isSubmitting}
-					class="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
-				>
-					{isSubmitting ? $i18n.t('Creating...') : $i18n.t('Create Ticket')}
-				</button>
+				<div class="flex items-center gap-3">
+					<button
+						type="button"
+						on:click={handleAutofill}
+						disabled={isAutofilling || messages.length === 0}
+						class="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
+					>
+						{isAutofilling ? $i18n.t('Filling...') : $i18n.t('Autofill with AI')}
+					</button>
+					{#if previousFields}
+						<button
+							type="button"
+							on:click={handleRevert}
+							class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+						>
+							{$i18n.t('Revert')}
+						</button>
+					{/if}
+					<button
+						type="button"
+						on:click={resetForm}
+						class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+					>
+						{$i18n.t('Reset Form')}
+					</button>
+				</div>
+				<div class="flex items-center gap-3">
+					<button
+						type="button"
+						on:click={handleCancel}
+						disabled={isSubmitting}
+						class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium disabled:opacity-50"
+					>
+						{$i18n.t('Cancel')}
+					</button>
+					<button
+						type="button"
+						on:click={handleSubmit}
+						disabled={isSubmitting}
+						class="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
+					>
+						{isSubmitting ? $i18n.t('Creating...') : $i18n.t('Create Ticket')}
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>

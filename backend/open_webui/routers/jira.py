@@ -14,6 +14,8 @@ from open_webui.retrieval.vector.factory import VECTOR_DB_CLIENT
 from open_webui.retrieval.vector.dbs.pgvector import PgvectorClient
 from open_webui.retrieval.vector.main import VectorItem
 
+from open_webui.models.files import Files
+from open_webui.storage.provider import Storage
 from open_webui.utils.auth import get_admin_user, get_verified_user
 # from open_webui.utils.jira.helpers import embed_jira_tickets
 from open_webui.utils.jira.formatters import description_text_to_adf, format_jira_ticket_for_embedding
@@ -30,6 +32,10 @@ import aiohttp
 
 log = logging.getLogger(__name__)
 router = APIRouter()
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+OPENAI_API_BASE_URL = os.environ.get("OPENAI_API_BASE_URL")
+OPENAI_API_VERSION = os.environ.get("RAG_AZURE_OPENAI_API_VERSION")
 
 JIRA_CLOUD_ID_ENV = os.environ.get("JIRA_CLOUD_ID")
 JIRA_COLLECTION = "jira_support_tickets"
@@ -132,10 +138,6 @@ def _get_jira_base_url(session) -> str:
     return f"https://api.atlassian.com/ex/jira/{cloud_id}"
 
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-OPENAI_API_BASE_URL = os.environ.get("OPENAI_API_BASE_URL")
-OPENAI_API_VERSION = os.environ.get("RAG_AZURE_OPENAI_API_VERSION")
-
 # =================================================================================
 # AUTOFILL
 # =================================================================================
@@ -161,8 +163,11 @@ async def autofill_jira(
         "- urgency: One of 'A', 'B', or 'C' where:\n"
         "    A = Critical/blocking, major system failure or complete inability to work\n"
         "    B = Significant impact, workaround exists\n"
-        "    C = Minor issue, question, or low-priority request\n\n"
-        "Respond with ONLY a valid JSON object with keys 'title', 'description', and 'urgency'. No other text."
+        "    C = Minor issue, question, or low-priority request\n"
+        "- affected_components: The system component affected by the issue. "
+        "Must be exactly one of: 'Trace OMS', 'Trace TMS', or 'Trace WMS'. "
+        "Choose based on the context — OMS for order management, TMS for transport management, WMS for warehouse management.\n\n"
+        "Respond with ONLY a valid JSON object with keys 'title', 'description', 'urgency', and 'affected_components'. No other text."
     )
 
     conversation = [{"role": "system", "content": system_prompt}]
@@ -314,6 +319,7 @@ class JiraCreateTicketForm(BaseModel):
     due_date: str | None = None
     assignee: str | None = None
     issue_type: str = "Task"
+    file_ids: list[str] = []
 
 
 @router.post("/create")
@@ -373,19 +379,83 @@ async def create_issue(
     payload = {"fields": fields}
     log.debug(f"Payload built: {payload}")
 
-    # 4. Post to Jira
+    # 4. Create the issue
     try:
         async with AsyncClient() as client:
             response = await client.post(url, headers=headers, json=payload)
+
         if response.status_code >= 400:
             body = response.text
             log.error(f"Jira API error {response.status_code}: {body}")
             raise HTTPException(status_code=502, detail=f"Jira API {response.status_code}: {body}")
-        log.info(f"Created Jira issue {response.json().get('key')} in project {form.project_key}")
-        return response.json()
+
+        result = response.json()
+        issue_key = result.get("key")
+        if not issue_key:
+            raise HTTPException(status_code=502, detail="Jira issue created but no key returned")
+        log.info(f"Created Jira issue {issue_key} in project {form.project_key}")
+
     except HTTPException:
         raise
     except Exception as e:
         log.error(f"Failed to create Jira issue: {e}")
         raise HTTPException(status_code=502, detail=str(e))
+
+
+    # 5. Attach files (separate API calls)
+    attachment_results = {"attached": [], "failed": []}
+
+    if form.file_ids:
+        attach_url = f"{jira_base_url}/rest/api/3/issue/{issue_key}/attachments"
+        attach_headers = {
+            "Authorization": f"Bearer {oauth_access_token}",
+            "X-Atlassian-Token": "no-check",
+        }
+
+        for file_id in form.file_ids:
+            try:
+                file_record = Files.get_file_by_id(file_id)
+                if not file_record:
+                    raise RuntimeError("File record not found")
+
+                local_path = Storage.get_file(file_record.path)
+                filename = (file_record.meta or {}).get("name", file_record.filename)
+
+                with open(local_path, "rb") as f:
+                    file_bytes = f.read()
+
+                async with AsyncClient() as client:
+                    resp = await client.post(
+                        attach_url,
+                        headers=attach_headers,
+                        files={"file": (filename, file_bytes)},
+                        timeout=60,
+                    )
+
+                if resp.status_code >= 400:
+                    raise RuntimeError(
+                        f"Jira attachment API error {resp.status_code}: {resp.text}"
+                    )
+
+                attachment_results["attached"].append(
+                    {"file_id": file_id, "filename": filename}
+                )
+                log.info(f"Attached {filename} to {issue_key}")
+
+            except Exception as e:
+                log.warning(f"Failed to attach file {file_id} to {issue_key}: {e}")
+                attachment_results["failed"].append({"file_id": file_id, "error": str(e)})
+
+    if attachment_results["failed"]:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": "Issue created, but one or more attachments failed",
+                "issue_key": issue_key,
+                "attachments": attachment_results,
+                "issue": result,
+            },
+        )
+
+    return result
 
