@@ -2655,7 +2655,7 @@
 
 <JiraTicketModal
 	show={showJiraModal}
-	files={createMessagesList(history, history.currentId).flatMap((m) => m.files ?? [])}
+	chatAttachments={createMessagesList(history, history.currentId).flatMap((m) => m.files ?? [])}
 	messages={createMessagesList(history, history.currentId)}
 	on:submit={() => {
 		showJiraModal = false;
