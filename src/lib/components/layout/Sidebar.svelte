@@ -628,7 +628,7 @@
 />
 
 <button
-	id="sidebar-new-chat-button"
+	id="sidebar-new-chat-shortcut"
 	class="hidden"
 	on:click={() => {
 		goto('/');
