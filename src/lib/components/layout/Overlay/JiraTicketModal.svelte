@@ -4,9 +4,10 @@
 	import XMark from '../../icons/XMark.svelte';
 	import { showSidebar } from '$lib/stores';
 	import i18n from '$lib/i18n';
+	import { uploadFile } from '$lib/apis/files';
 
 	export let show = false;
-	export let files = [];
+	export let chatAttachments = [];
 	export let messages: { role: string; content: string }[] = [];
 
 	const dispatch = createEventDispatcher();
@@ -15,12 +16,14 @@
 	let description = '';
 	let urgency = '';
 	let affectedComponents = '';
-	let allAttachments = [];
-	let removedFiles = new Set();
+	let allAttachments: { id: string; name: string }[] = [];
+	let removedFiles = new Set<string>();
 	$: if (show) {
-		const existing = new Set(allAttachments);
-		const newChatFiles = (files ?? []).filter((f) => !existing.has(f) && !removedFiles.has(f));
-		allAttachments = [...allAttachments, ...newChatFiles];
+		const existingIds = new Set(allAttachments.map((a) => a.id));
+		const newChatAttachments = (chatAttachments ?? [])
+			.filter((a) => a.id && !existingIds.has(a.id) && !removedFiles.has(a.id))
+			.map((a) => ({ id: a.id, name: a.name }));
+		allAttachments = [...allAttachments, ...newChatAttachments];
 	}
 	let errors: { [key: string]: string } = {};
 	let isSubmitting = false;
@@ -34,6 +37,7 @@
 	const PROJECT_KEY = 'TESTSUPP';
 
 	const urgencyOptions = [
+		{ value: '', label: '' },
 		{ value: 'A', label: 'A' },
 		{ value: 'B', label: 'B' },
 		{ value: 'C', label: 'C' }
@@ -42,18 +46,19 @@
 	async function fetchProjectMeta() {
 		loadingMeta = true;
 		try {
-			const res = await fetch(`/api/v1/jira/project-meta/${PROJECT_KEY}`);
+			const res = await fetch(`/api/v1/jira/project-meta/${PROJECT_KEY}`, {
+				headers: { Authorization: `Bearer ${localStorage.token}` }
+			});
 			if (res.ok) {
 				const data = await res.json();
 				issueTypes = (data.issue_types || []).filter((t: any) => !t.subtask);
 				if (issueTypes.length > 0 && !selectedIssueType) {
 					selectedIssueType = issueTypes[0].name;
 				}
+				loadingMeta = false;
 			}
 		} catch (e) {
 			console.warn('Failed to fetch JIRA project meta:', e);
-		} finally {
-			loadingMeta = false;
 		}
 	}
 
@@ -77,16 +82,39 @@
 		return Object.keys(errors).length === 0;
 	}
 
-	function handleFileUpload(event: Event) {
+	async function handleFileUpload(event: Event) {
 		const input = event.target as HTMLInputElement;
+		console.log('handleFileUpload called, files:', input.files);
 		if (input.files) {
-			allAttachments = [...allAttachments, ...Array.from(input.files)];
+			for (const file of Array.from(input.files)) {
+				console.log('Processing file:', file.name, 'size:', file.size);
+				if (file.size === 0) {
+					toast.error($i18n.t('Cannot upload empty file: {{name}}', { name: file.name }));
+					continue;
+				}
+				try {
+					const uploaded = await uploadFile(localStorage.token, file, null, false);
+					console.log('Upload result:', uploaded);
+					if (uploaded?.id) {
+						allAttachments = [
+							...allAttachments,
+							{ id: uploaded.id, name: uploaded.meta?.name || uploaded.filename }
+						];
+						console.log('Added to allAttachments:', allAttachments);
+					} else {
+						console.warn('Upload returned no id:', uploaded);
+					}
+				} catch (e) {
+					console.error('Upload failed for file:', file.name, e);
+					toast.error($i18n.t('Failed to upload file: {{name}}', { name: file.name }));
+				}
+			}
 		}
 		input.value = '';
 	}
 
 	function removeFile(index: number) {
-		removedFiles.add(allAttachments[index]);
+		removedFiles.add(allAttachments[index].id);
 		allAttachments = allAttachments.filter((_, i) => i !== index);
 	}
 
@@ -98,6 +126,20 @@
 		isSubmitting = true;
 
 		try {
+			const chatAttachmentIds = new Set(
+				(chatAttachments ?? []).filter((a) => a.id).map((a) => a.id)
+			);
+
+			console.log(
+				'Creating ticket —',
+				'chat attachments:',
+				allAttachments.filter((a) => chatAttachmentIds.has(a.id)),
+				'modal attachments:',
+				allAttachments.filter((a) => !chatAttachmentIds.has(a.id)),
+				'all attachments:',
+				allAttachments
+			);
+
 			const response = await fetch('/api/v1/jira/create', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -107,7 +149,7 @@
 					description: description,
 					priority: urgency,
 					issue_type: selectedIssueType || 'Task',
-					file_ids: files.map((f) => f.id).filter(Boolean) // Filters out falsy values
+					file_ids: allAttachments.map((a) => a.id)
 				})
 			});
 
@@ -193,7 +235,7 @@
 		urgency = '';
 		affectedComponents = '';
 		allAttachments = [];
-		removedFiles = new Set();
+		removedFiles = new Set<string>();
 		errors = {};
 		selectedIssueType = issueTypes.length > 0 ? issueTypes[0].name : '';
 		previousFields = null;
