@@ -8,7 +8,7 @@
     import XMark from '$lib/components/icons/XMark.svelte';
     
 
-    const i18n = getContext('i18n');
+    const i18n = getContext('i18n') as any;
     const isDark = document.documentElement.classList.contains('dark');
 
     export let show = false;
@@ -48,31 +48,66 @@
                                 'Click this button at any point in a conversation to raise a Jira support ticket. The form will pre-fill using your chat context.'
                             ),
                             side: 'top',
-                            align: 'center'
+                                                        align: 'center',
+                                                        onNextClick: () => {
+                                                                const jiraTicketButton = document.getElementById('jira-ticket-button');
+                                                                jiraTicketButton?.click();
+                                                                setTimeout(() => driverObj.moveNext(), 300);
+                                                        }
                         }
                     },
                     {
-                      element: '#chat-input',
+                                            element: '#jira-ticket-modal-title',
                       popover: {
-                        title: $i18n.t('Describe Your Issue'),
-                        description: $i18n.t('...'),
+                                                title: $i18n.t('Fill in Ticket Details'),
+                                                description: $i18n.t(
+                                                        'The Jira modal helps you add a clear title, detailed description, urgency, affected components, and optional attachments before creating the ticket.'
+                                                ),
                         side: 'top',
                         align: 'start',
                         onNextClick: () => {
-                          showSidebar.set(true); // make target exist
-                          setTimeout(() => driverObj.moveNext(), 250);
+                                                    setTimeout(() => driverObj.moveNext(), 150);
                         }
                       }
                     },
                     {
-                      element: '#sidebar-new-chat-button',
+                                            element: '#jira-ticket-autofill-button',
                       popover: {
-                        title: $i18n.t('Start a New Conversation'),
-                        description: $i18n.t('...'),
-                        side: 'bottom',
-                        align: 'start'
-                      }
+                                                title: $i18n.t('Autofill with AI'),
+                                                description: $i18n.t(
+                                                        'Use Autofill with AI to generate a draft ticket from the current conversation, then review and adjust before submitting.'
+                                                ),
+                                                side: 'top',
+                                                align: 'start'
+                                            }
+
+                                        },
+                                        {
+                                            element: '#jira-ticket-submit-button',
+                                            popover: {
+                                                title: $i18n.t('Create the Ticket'),
+                                                description: $i18n.t(
+                                                        'When everything looks good, press Create Ticket to submit it to Jira directly from the chat.'
+                                                ),
+                                                side: 'top',
+                                                align: 'start',
+                                                onNextClick: () => {
+                                                        const jiraModalCloseButton = document.querySelector('#jira-ticket-modal button');
+                                                        (jiraModalCloseButton as HTMLButtonElement | null)?.click();
+                                                        showSidebar.set(true);
+                                                        setTimeout(() => driverObj.moveNext(), 300);
+                                                }
+                                            }
                     
+                                        },
+                                        {
+                                            element: '#sidebar-new-chat-button',
+                                            popover: {
+                                                title: $i18n.t('Start a New Conversation'),
+                                                description: $i18n.t('Use this button any time you want to begin a fresh support chat.'),
+                                                side: 'bottom',
+                                                align: 'start'
+                                            }
                     }
                 ]
             });

@@ -265,11 +265,9 @@
 		}
 
 		const FEATURES_VERSION = 'jira-1.0';
-		/**if (!$settings?.featuresVersion || $settings.featuresVersion !== FEATURES_VERSION) {
-		showNewFeatures.set(true);
-		}*/
-
-		showNewFeatures.set(true);
+		if (!$settings?.featuresVersion || $settings.featuresVersion !== FEATURES_VERSION) {
+			showNewFeatures.set(true);
+		}
 
 		if ($user?.role === 'admin' || ($user?.permissions?.chat?.temporary ?? true)) {
 			if ($page.url.searchParams.get('temporary-chat') === 'true') {
