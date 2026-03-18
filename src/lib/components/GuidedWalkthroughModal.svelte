@@ -20,6 +20,16 @@
         show = false;
     };
 
+    const openJiraTicketModal = () => {
+        const jiraTicketButton = document.getElementById('jira-ticket-button');
+        jiraTicketButton?.click();
+    };
+
+    const closeJiraTicketModal = () => {
+        const jiraModalCloseButton = document.querySelector('#jira-ticket-modal button');
+        (jiraModalCloseButton as HTMLButtonElement | null)?.click();
+    };
+
     const startTour = async () => {
         await dismissModal();
 
@@ -43,15 +53,14 @@
                     {
                         element: '#jira-ticket-button',
                         popover: {
-                            title: $i18n.t('Create a Jira Ticket'),
+                            title: $i18n.t('Create a Jira Ticket from Your Conversation'),
                             description: $i18n.t(
-                                'Click this button at any point in a conversation to raise a Jira support ticket. The form will pre-fill using your chat context.'
+                                'Click this button when you are ready to escalate. The Jira ticket form can pre-fill details from your current chat context.'
                             ),
                             side: 'top',
                                                         align: 'center',
                                                         onNextClick: () => {
-                                                                const jiraTicketButton = document.getElementById('jira-ticket-button');
-                                                                jiraTicketButton?.click();
+                                                                openJiraTicketModal();
                                                                 setTimeout(() => driverObj.moveNext(), 300);
                                                         }
                         }
@@ -61,12 +70,16 @@
                       popover: {
                                                 title: $i18n.t('Fill in Ticket Details'),
                                                 description: $i18n.t(
-                                                        'The Jira modal helps you add a clear title, detailed description, urgency, affected components, and optional attachments before creating the ticket.'
+                                                        'The Jira ticket form helps you add a clear title, detailed description, urgency, affected components, and optional attachments before creating the ticket.'
                                                 ),
                         side: 'top',
                         align: 'start',
                         onNextClick: () => {
                                                     setTimeout(() => driverObj.moveNext(), 150);
+                                                },
+                                                onPrevClick: () => {
+                                                                                                        closeJiraTicketModal();
+                                                                                                        setTimeout(() => driverObj.movePrevious(), 300);
                         }
                       }
                     },
@@ -92,8 +105,7 @@
                                                 side: 'top',
                                                 align: 'start',
                                                 onNextClick: () => {
-                                                        const jiraModalCloseButton = document.querySelector('#jira-ticket-modal button');
-                                                        (jiraModalCloseButton as HTMLButtonElement | null)?.click();
+                                                    closeJiraTicketModal();
                                                         showSidebar.set(true);
                                                         setTimeout(() => driverObj.moveNext(), 300);
                                                 }
@@ -106,7 +118,11 @@
                                                 title: $i18n.t('Start a New Conversation'),
                                                 description: $i18n.t('Use this button any time you want to begin a fresh support chat.'),
                                                 side: 'bottom',
-                                                align: 'start'
+                                                align: 'start',
+                                                onPrevClick: () => {
+                                                        openJiraTicketModal();
+                                                        setTimeout(() => driverObj.movePrevious(), 300);
+                                                }
                                             }
                     }
                 ]
@@ -136,35 +152,6 @@
     </div>
 
     <div class="w-full px-6 pb-2 pt-5 text-gray-700 dark:text-gray-100 space-y-3">
-        <!-- Jira -->
-        <div class="flex gap-3 items-start">
-            <div
-                class="shrink-0 flex items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/40 size-9 mt-0.5"
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="size-4.5 text-blue-600 dark:text-blue-300"
-                >
-                    <path d="M3 7h18v3a2 2 0 100 4v3H3v-3a2 2 0 100-4V7z" />
-                    <line x1="12" y1="7" x2="12" y2="17" />
-                </svg>
-            </div>
-            <div>
-                <div class="font-semibold text-sm">{$i18n.t('Create Jira Tickets')}</div>
-                <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                    {$i18n.t(
-                        'Raise support tickets directly from your chat — the AI auto-fills the details.'
-                    )}
-                </div>
-            </div>
-        </div>
-
         <!-- RAG -->
         <div class="flex gap-3 items-start">
             <div
@@ -188,7 +175,36 @@
                 <div class="font-semibold text-sm">{$i18n.t('AI-Powered Answers')}</div>
                 <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                     {$i18n.t(
-                        "Ask anything — answers are sourced from your company's documentation with citations."
+                        "Ask ReSolwr anything - get answers to general questions and Solwr-specific issues alike, backed by Solwr's own documentation and support history."
+                    )}
+                </div>
+            </div>
+        </div>
+
+        <!-- Jira -->
+        <div class="flex gap-3 items-start">
+            <div
+                class="shrink-0 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-700/50 size-9 mt-0.5"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="size-4.5 text-white"
+                >
+                    <path d="M3 7h18v3a2 2 0 100 4v3H3v-3a2 2 0 100-4V7z" />
+                    <line x1="12" y1="7" x2="12" y2="17" />
+                </svg>
+            </div>
+            <div>
+                <div class="font-semibold text-sm">{$i18n.t('Create Jira Tickets')}</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    {$i18n.t(
+                        "Can't find the answer? Create a support ticket without leaving the chat - the AI fills in the details for you."
                     )}
                 </div>
             </div>
