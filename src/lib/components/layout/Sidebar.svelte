@@ -15,6 +15,7 @@
 		showSearch,
 		mobile,
 		showArchivedChats,
+		showNewFeatures,
 		pinnedChats,
 		scrollPaginationEnabled,
 		currentChatPage,
@@ -62,6 +63,7 @@
 	import Sidebar from '../icons/Sidebar.svelte';
 	import PinnedModelList from './Sidebar/PinnedModelList.svelte';
 	import Note from '../icons/Note.svelte';
+	import Map from '../icons/Map.svelte';
 	import { slide } from 'svelte/transition';
 	import HotkeyHint from '../common/HotkeyHint.svelte';
 
@@ -628,7 +630,7 @@
 />
 
 <button
-	id="sidebar-new-chat-button"
+	id="sidebar-new-chat-shortcut"
 	class="hidden"
 	on:click={() => {
 		goto('/');
@@ -1351,48 +1353,64 @@
 				<div
 					class=" sidebar-bg-gradient-to-t bg-linear-to-t from-gray-50 dark:from-gray-950 to-transparent from-50% pointer-events-none absolute inset-0 -z-10 -mt-6"
 				></div>
-				<div class="flex flex-col font-primary">
+				<div class="flex items-center justify-between gap-1 font-primary w-full">
 					{#if $user !== undefined && $user !== null}
-						<UserMenu
-							role={$user?.role}
-							profile={$config?.features?.enable_user_status ?? true}
-							showActiveUsers={false}
-							on:show={(e) => {
-								if (e.detail === 'archived-chat') {
-									showArchivedChats.set(true);
-								}
-							}}
-						>
-							<div
-								class=" flex items-center rounded-2xl py-2 px-1.5 w-full hover:bg-gray-100/50 dark:hover:bg-gray-900/50 transition"
+						<div class="flex-1 min-w-0">
+							<UserMenu
+								role={$user?.role}
+								profile={$config?.features?.enable_user_status ?? true}
+								showActiveUsers={false}
+								on:show={(e) => {
+									if (e.detail === 'archived-chat') {
+										showArchivedChats.set(true);
+									}
+								}}
 							>
-								<div class=" self-center mr-3 relative">
-									<img
-										src={`${WEBUI_API_BASE_URL}/users/${$user?.id}/profile/image`}
-										class=" size-7 object-cover rounded-full"
-										alt={$i18n.t('Open User Profile Menu')}
-										aria-label={$i18n.t('Open User Profile Menu')}
-									/>
+								<div
+									class="flex items-center rounded-2xl py-2 px-1.5 w-full hover:bg-gray-100/50 dark:hover:bg-gray-900/50 transition"
+								>
+									<div class=" self-center mr-3 relative">
+										<img
+											src={`${WEBUI_API_BASE_URL}/users/${$user?.id}/profile/image`}
+											class=" size-7 object-cover rounded-full"
+											alt={$i18n.t('Open User Profile Menu')}
+											aria-label={$i18n.t('Open User Profile Menu')}
+										/>
 
-									{#if $config?.features?.enable_user_status}
-										<div class="absolute -bottom-0.5 -right-0.5">
-											<span class="relative flex size-2.5">
-												<span
-													class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"
-												></span>
-												<span
-													class="relative inline-flex size-2.5 rounded-full {true
-														? 'bg-green-500'
-														: 'bg-gray-300 dark:bg-gray-700'} border-2 border-white dark:border-gray-900"
-												></span>
-											</span>
-										</div>
-									{/if}
+										{#if $config?.features?.enable_user_status}
+											<div class="absolute -bottom-0.5 -right-0.5">
+												<span class="relative flex size-2.5">
+													<span
+														class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"
+													></span>
+													<span
+														class="relative inline-flex size-2.5 rounded-full {true
+															? 'bg-green-500'
+															: 'bg-gray-300 dark:bg-gray-700'} border-2 border-white dark:border-gray-900"
+													></span>
+												</span>
+											</div>
+										{/if}
+									</div>
+									<div class="self-center font-medium">{$user?.name}</div>
 								</div>
-								<div class=" self-center font-medium">{$user?.name}</div>
-							</div>
-						</UserMenu>
+							</UserMenu>
+						</div>
 					{/if}
+
+					<Tooltip content={$i18n.t('Guided Walkthrough')} placement="top">
+						<button
+							id="sidebar-replay-tutorial-button"
+							type="button"
+							class="shrink-0 rounded-xl p-2 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-900/50 transition"
+							on:click|stopPropagation={() => {
+								showNewFeatures.set(true);
+							}}
+							aria-label={$i18n.t('Guided Walkthrough')}
+						>
+							<Map className="size-4.5" strokeWidth="2" />
+						</button>
+					</Tooltip>
 				</div>
 			</div>
 		</div>

@@ -244,6 +244,7 @@
 
 {#if show}
 	<div
+		id="jira-ticket-modal"
 		class="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-sm p-4 transition-all duration-200"
 		style={$showSidebar ? 'left: var(--sidebar-width);' : ''}
 	>
@@ -254,7 +255,7 @@
 			<div
 				class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 p-6"
 			>
-				<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Create JIRA Ticket</h2>
+				<h2 id="jira-ticket-modal-title" class="text-xl font-semibold text-gray-900 dark:text-white">Create JIRA Ticket</h2>
 				<button
 					on:click={handleCancel}
 					class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
@@ -426,6 +427,7 @@
 				<div class="flex items-center gap-3">
 					<button
 						type="button"
+						id="jira-ticket-autofill-button"
 						on:click={handleAutofill}
 						disabled={isAutofilling || messages.length === 0}
 						class="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
@@ -460,6 +462,7 @@
 					</button>
 					<button
 						type="button"
+						id="jira-ticket-submit-button"
 						on:click={handleSubmit}
 						disabled={isSubmitting}
 						class="px-4 py-2 rounded-lg bg-white text-black hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
