@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { getContext } from 'svelte';
+    import { getContext, tick } from 'svelte';
     import { Confetti } from 'svelte-confetti';
     import { WEBUI_NAME, settings, showSidebar } from '$lib/stores';
     import { get } from 'svelte/store';
@@ -30,8 +30,17 @@
         (jiraModalCloseButton as HTMLButtonElement | null)?.click();
     };
 
+    const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches;
+    const isNarrowViewport = () => window.matchMedia('(max-width: 1100px)').matches;
+    const getFinalStepAlign = () => (isNarrowViewport() ? 'start' : 'center');
+
     const startTour = async () => {
         await dismissModal();
+
+        if (isMobileViewport() && get(showSidebar)) {
+            showSidebar.set(false);
+            await tick();
+        }
 
         setTimeout(async () => {
             const { driver } = await import('driver.js');
@@ -53,12 +62,13 @@
                     {
                         element: '#jira-ticket-button',
                         popover: {
-                            title: $i18n.t('Create a Jira Ticket from Your Conversation'),
+                            title: $i18n.t('Create a Jira Ticket'),
                             description: $i18n.t(
-                                'Click this button when you are ready to escalate. The Jira ticket form can pre-fill details from your current chat context.'
+                                'Click this button at any point in a conversation to raise a Jira ticket. You can use AI to automatically fill the fields based on your chat.'
                             ),
                             side: 'top',
                                                         align: 'center',
+                                                        popoverClass: 'owui-tour-popover owui-tour-popover--jira-button',
                                                         onNextClick: () => {
                                                                 openJiraTicketModal();
                                                                 setTimeout(() => driverObj.moveNext(), 300);
@@ -103,7 +113,7 @@
                                                         'When everything looks good, press Create Ticket to submit it to Jira directly from the chat.'
                                                 ),
                                                 side: 'top',
-                                                align: 'start',
+                                                align: 'end',
                                                 onNextClick: () => {
                                                     closeJiraTicketModal();
                                                         showSidebar.set(true);
@@ -118,7 +128,8 @@
                                                 title: $i18n.t('Start a New Conversation'),
                                                 description: $i18n.t('Use this button any time you want to begin a fresh support chat.'),
                                                 side: 'bottom',
-                                                align: 'start',
+                                                align: getFinalStepAlign(),
+                                                popoverClass: 'owui-tour-popover owui-tour-popover--new-chat',
                                                 onPrevClick: () => {
                                                         openJiraTicketModal();
                                                         setTimeout(() => driverObj.movePrevious(), 300);
