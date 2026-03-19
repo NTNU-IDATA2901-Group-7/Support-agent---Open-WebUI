@@ -894,6 +894,20 @@ body {
     opacity: 1 !important;
 }
 
+/* Slightly lift the final walkthrough popover for better positioning. */
+.driver-popover.owui-tour-popover--new-chat {
+	transform: translateY(-12px) !important;
+}
+
+@media (max-width: 1100px) {
+
+	.driver-popover.owui-tour-popover--jira-button .driver-popover-arrow {
+		left: 50% !important;
+		right: auto !important;
+		transform: translateX(-50%) !important;
+	}
+}
+
 .driver-active-element {
     border-radius: 12px !important;
 }
