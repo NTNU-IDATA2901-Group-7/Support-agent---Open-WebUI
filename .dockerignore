@@ -18,3 +18,8 @@ uploads
 **/*.db
 _test
 backend/data/*
+backend/venv
+build/
+cypress/
+test/
+scripts/
