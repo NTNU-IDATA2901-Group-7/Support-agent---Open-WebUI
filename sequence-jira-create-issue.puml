@@ -1,0 +1,36 @@
+@startuml
+title Chat to Jira Ticket - Simplified Sequence
+
+autonumber
+skinparam responseMessageBelowArrow true
+
+actor "Support Agent" as user
+participant "Web UI\n(Chat + Ticket Panel)" as ui
+participant "Open WebUI Backend" as backend
+participant "LLM Service\n(draft generation)" as llm
+participant "Jira API" as jira
+
+user -> ui: Open chat and describe issue
+ui -> backend: Send chat message
+backend --> ui: Chat response + suggest ticket
+
+user -> ui: Click "Create Jira ticket"
+ui -> backend: Request ticket draft from chat context
+backend -> llm: Generate title/description/priority
+llm --> backend: Draft fields
+backend --> ui: Prefilled ticket draft
+
+user -> ui: Edit fields and confirm submit
+ui -> backend: Create issue request
+backend -> jira: POST issue
+jira --> backend: issue key
+
+opt Attachments included
+  backend -> jira: Upload attachment(s)
+  jira --> backend: Upload result
+end
+
+backend --> ui: Ticket created (key + link)
+ui --> user: Show success message
+
+@enduml
