@@ -1,0 +1,119 @@
+@startuml uml
+title Open WebUI - Jira Integration Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+hide empty members
+
+package "routers" {
+	class JiraAutofillForm <<pydantic>> {
+		+messages: list[dict]
+	}
+
+	class JiraCreateTicketForm <<pydantic>> {
+		+project_key: str
+		+summary: str
+		+description: str
+		+priority: str
+		+due_date: str
+		+assignee: str
+		+issue_type: str
+		+file_ids: list[str]
+	}
+
+	class JiraRouter <<router>> {
+		+autofill_jira(form, user): dict
+		+sync_jira(request, user)
+		+jira_status(user): dict
+		+get_project_meta(project_key, user): dict
+		+create_issue(form, request, user): dict
+		-_refresh_jira_token(session): dict
+		-_get_jira_session(user_id)
+		-_get_jira_base_url(session): str
+	}
+}
+
+package "models" {
+	class OAuthSession <<sqlalchemy>> {
+		+id: Text
+		+user_id: Text
+		+provider: Text
+		+token: Text
+		+expires_at: BigInteger
+		+created_at: BigInteger
+		+updated_at: BigInteger
+	}
+
+	class OAuthSessionModel <<pydantic>> {
+		+id: str
+		+user_id: str
+		+provider: str
+		+token: dict
+		+expires_at: int
+		+created_at: int
+		+updated_at: int
+	}
+
+	class OAuthSessionTable <<service>> {
+		+create_session(user_id, provider, token)
+		+get_session_by_provider_and_user_id(provider, user_id)
+		+update_session_by_id(session_id, token)
+		+delete_session_by_id(session_id)
+	}
+
+	class Files <<model>> {
+		+get_file_by_id(file_id)
+	}
+}
+
+package "retrieval" {
+	class JiraTickets <<module>> {
+		+fetch_jira_tickets(oauth_access_token): list[dict]
+	}
+
+	class VectorItem <<dto>> {
+		+id: str
+		+text: str
+		+vector: list[float]
+		+metadata: dict
+	}
+
+	class PgvectorClient <<vector-db>> {
+		+upsert(collection_name, items)
+	}
+}
+
+package "utils.jira" {
+	class JiraFormatters <<module>> {
+		+description_text_to_adf(description): dict
+		+format_jira_ticket_for_embedding(ticket): str
+	}
+}
+
+package "utils" {
+	class Embeddings <<module>> {
+		+generate_embeddings(request, form_data, user): dict
+	}
+
+	class Storage <<provider>> {
+		+get_file(path)
+	}
+}
+
+JiraRouter ..> JiraAutofillForm : uses
+JiraRouter ..> JiraCreateTicketForm : uses
+
+JiraRouter ..> OAuthSessionTable : reads/updates oauth session
+OAuthSessionTable --> OAuthSession : persists
+OAuthSessionTable ..> OAuthSessionModel : returns
+
+JiraRouter ..> JiraTickets : sync fetch
+JiraRouter ..> JiraFormatters : format/adf
+JiraRouter ..> Embeddings : create vectors
+JiraRouter ..> VectorItem : builds
+JiraRouter ..> PgvectorClient : upsert vectors
+
+JiraRouter ..> Files : resolve attachments
+JiraRouter ..> Storage : load attachment bytes
+
+@enduml
