@@ -22,4 +22,3 @@ backend/venv
 build/
 cypress/
 test/
-scripts/
