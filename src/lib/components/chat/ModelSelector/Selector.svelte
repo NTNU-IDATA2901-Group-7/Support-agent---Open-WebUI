@@ -399,11 +399,11 @@
 			{:else}
 				{placeholder}
 			{/if}
-			<ChevronDown className=" self-center ml-2 size-3" strokeWidth="2.5" />
+			<!-- <ChevronDown className=" self-center ml-2 size-3" strokeWidth="2.5" /> -->
 		</div>
 	</DropdownMenu.Trigger>
 
-	<DropdownMenu.Content
+	<!-- <DropdownMenu.Content
 		class=" z-40 {$mobile
 			? `w-full`
 			: `${className}`} max-w-[calc(100vw-1rem)] justify-start rounded-2xl  bg-white dark:bg-gray-850 dark:text-white shadow-lg  outline-hidden"
@@ -655,5 +655,5 @@
 			<div class="hidden w-[42rem]" />
 			<div class="hidden w-[32rem]" />
 		</slot>
-	</DropdownMenu.Content>
+	</DropdownMenu.Content> -->
 </DropdownMenu.Root>
