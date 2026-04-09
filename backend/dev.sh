@@ -1,3 +1,8 @@
+# Load environment variables from .env
+set -a
+source ../.env
+set +a
+
 export CORS_ALLOW_ORIGIN="http://localhost:5173;http://localhost:8080"
 PORT="${PORT:-8080}"
 MCP_PORT="${MCP_PORT:-8000}"

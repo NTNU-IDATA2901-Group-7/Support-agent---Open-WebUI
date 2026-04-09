@@ -3,59 +3,32 @@ RESULT FORMATTERS - Converts data to LLM-readable text
 """
 
 import logging
-
 log = logging.getLogger(__name__)
 
 
 # ==================== JIRA FORMATTERS ====================
-
 
 def description_text_to_adf(description: str) -> dict:
     """Convert plain description text to ADF (Atlassian Document Format) - used by create_issue
     method"""
     return {
         "content": [
-            {"content": [{"text": description, "type": "text"}], "type": "paragraph"}
+        {
+          "content": [
+            {
+              "text": description,
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
         ],
         "type": "doc",
-        "version": 1,
-    }
+        "version": 1
+}
 
 
-def format_similar_jira_ticket_search_results(result: dict) -> str:
-    """
-    Formats Jira search results into a structured text block optimized for LLM context.
-
-    Args:
-        result (dict): Output from search_vector_db_for_similar_jira_tickets
-
-    Returns:
-        str: Formatted text block
-    """
-    results = result.get("results", [])
-    log.info(f"Formatting Jira ticket search results ({len(results)} results)")
-
-    if not results:
-        return "Relevant Jira tickets:\n\nNo similar tickets found."
-
-    lines = [f"Top {len(results)} most relevant Jira tickets:\n"]
-
-    for i, r in enumerate(results, 1):
-        key = r.get("key", "Unknown")
-        summary = r.get("summary", "")
-        score = r.get("score", 0.0)
-
-        lines.append(f"[{i}]")
-        lines.append(f"Key: {key}")
-        lines.append(f"Summary: {summary}")
-        lines.append(f"Similarity: {score:.2f}")
-        lines.append("")
-
-    log.info("Finished formatting Jira ticket search results")
-    return "\n".join(lines)
-
-
-def format_similar_jira_ticket_search_results_new(result) -> str:
+def format_similar_jira_ticket_search_results(result) -> str:
     """
     Formats Jira tickets search result into a structured text block for LLM context.
     Args:
@@ -77,13 +50,13 @@ def format_similar_jira_ticket_search_results_new(result) -> str:
     for i, (doc_id, doc_text, meta, score) in enumerate(rows, 1):
         lines.append(f"[{i}]")
         lines.append(f"Key: {meta.get('key', doc_id)}")
-        lines.append(
-            f"Summary: {meta.get('summary', doc_text[:80] if doc_text else '')}"
-        )
+        lines.append(f"Summary: {meta.get('summary', doc_text[:80] if doc_text else '')}")
         lines.append(f"Similarity: {score:.2f}\n")
     str_result = "\n".join(lines)
     log.debug(str_result)
     return str_result
+
+
 
 
 def format_jira_ticket_details(ticket_dict: dict) -> str:
@@ -135,7 +108,6 @@ def format_jira_ticket_for_embedding(ticket: dict) -> str:
 
 # ==================== RAG FORMATTERS ====================
 
-
 def format_jql_search_results(result: dict) -> str:
     """
     Format JQL search results into readable text for LLM or display.
@@ -171,3 +143,6 @@ def format_jql_search_results(result: dict) -> str:
         lines.append("")
 
     return "\n".join(lines)
+
+
+

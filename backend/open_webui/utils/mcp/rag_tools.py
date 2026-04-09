@@ -14,10 +14,10 @@ from open_webui.retrieval.vector.dbs.pgvector import PgvectorClient
 
 log = logging.getLogger(__name__)
 
-RAG_AZURE_OPENAI_KEY = os.environ.get("RAG_RAG_AZURE_OPENAI_API_KEY")
-RAG_AZURE_OPENAI_VERSION = os.environ.get("RAG_RAG_AZURE_OPENAI_API_VERSION")
+RAG_AZURE_OPENAI_KEY = os.environ.get("RAG_AZURE_OPENAI_API_KEY")
+RAG_AZURE_OPENAI_VERSION = os.environ.get("RAG_AZURE_OPENAI_API_VERSION")
 RAG_AZURE_OPENAI_MODEL = os.environ.get("RAG_EMBEDDING_MODEL")
-RAG_AZURE_OPENAI_BASE_URL = os.environ.get("RAG_RAG_AZURE_OPENAI_BASE_URL")
+RAG_AZURE_OPENAI_BASE_URL = os.environ.get("RAG_AZURE_OPENAI_BASE_URL")
 
 JIRA_COLLECTION = "jira_support_tickets"
 

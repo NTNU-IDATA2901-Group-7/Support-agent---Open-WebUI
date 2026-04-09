@@ -16,10 +16,10 @@ from fastapi import HTTPException
 # =================================================================================
 
 log = logging.getLogger(__name__)
-JIRA_DOMAIN = os.environ.get("JIRA_DOMAIN")
+JIRA_CLOUD_ID = os.environ.get("JIRA_CLOUD_ID")
 JIRA_PROJECT_KEY = os.environ.get("JIRA_PROJECT_KEY")
 
-BASE_URL = f"https://{JIRA_DOMAIN}/rest/api/3"
+BASE_URL = f"https://api.atlassian.com/ex/jira/{JIRA_CLOUD_ID}/rest/api/3"
 
 # =================================================================================
 # FETCH JIRA TICKETS
