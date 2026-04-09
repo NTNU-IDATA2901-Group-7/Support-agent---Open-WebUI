@@ -219,7 +219,9 @@
 										<div class="flex-1 text-sm">
 											{#if jiraConnection?.connected}
 												<span class="text-green-600 dark:text-green-400">Connected</span>
-												<span class="text-gray-500 ml-1 text-xs">({jiraConnection.atlassian_account_id})</span>
+												<span class="text-gray-500 ml-1 text-xs"
+													>({jiraConnection.atlassian_account_id})</span
+												>
 											{:else}
 												<span class="text-gray-400">Not connected</span>
 											{/if}

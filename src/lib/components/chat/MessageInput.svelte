@@ -988,7 +988,6 @@
 		toast.success($i18n.t('JIRA ticket created successfully'));
 		showJiraModal = false;
 	}
-
 </script>
 
 <FilesOverlay show={dragged} />
@@ -1562,21 +1561,23 @@
 									/>
 									<Tooltip content="Create Jira Ticket">
 										<button
-											id="jira-ticket-button"	
+											id="jira-ticket-button"
 											class="bg-transparent hover:bg-gray-100 text-gray-700 dark:text-white dark:hover:bg-gray-800 rounded-full size-8 flex justify-center items-center outline-hidden focus:outline-hidden"
 											type="button"
 											on:click={() => createJiraTicket()}
 										>
-											<svg xmlns="http://www.w3.org/2000/svg"
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
 												viewBox="0 0 24 24"
 												fill="none"
 												stroke="currentColor"
 												stroke-width="2"
 												stroke-linecap="round"
 												stroke-linejoin="round"
-												class="size-4.5">
-												<path d="M3 7h18v3a2 2 0 100 4v3H3v-3a2 2 0 100-4V7z"/>
-												<line x1="12" y1="7" x2="12" y2="17"/>
+												class="size-4.5"
+											>
+												<path d="M3 7h18v3a2 2 0 100 4v3H3v-3a2 2 0 100-4V7z" />
+												<line x1="12" y1="7" x2="12" y2="17" />
 											</svg>
 										</button>
 									</Tooltip>
@@ -1599,7 +1600,6 @@
 											</Tooltip>
 										</div>
 									{/if}
-									
 
 									<div class="ml-1 flex gap-1.5">
 										{#if (selectedToolIds ?? []).length > 0}

@@ -84,7 +84,8 @@
 
 	const handleJiraSkip = async () => {
 		showJiraModal = false;
-		const redirectPath = localStorage.getItem('redirectPath') || $page.url.searchParams.get('redirect') || '/';
+		const redirectPath =
+			localStorage.getItem('redirectPath') || $page.url.searchParams.get('redirect') || '/';
 		goto(redirectPath);
 		localStorage.removeItem('redirectPath');
 	};
@@ -110,7 +111,6 @@
 
 			// Wait for next tick to ensure config is updated
 			await tick();
-
 
 			if (!redirectPath) {
 				redirectPath = $page.url.searchParams.get('redirect') || '/';
@@ -215,7 +215,8 @@
 			return;
 		}
 
-		const redirectPath = localStorage.getItem('redirectPath') || $page.url.searchParams.get('redirect') || '/';
+		const redirectPath =
+			localStorage.getItem('redirectPath') || $page.url.searchParams.get('redirect') || '/';
 		goto(redirectPath);
 		localStorage.removeItem('redirectPath');
 	};
@@ -661,7 +662,9 @@
 								<div class="bg-white dark:bg-gray-900 rounded-lg p-8 max-w-sm w-full mx-4">
 									<h2 class="text-2xl font-bold mb-4 dark:text-white">Connect to Atlassian</h2>
 									<p class="text-gray-600 dark:text-gray-300 mb-6">
-										To enhance your experience, we recommend connecting your Atlassian (JIRA) account. This allows us to better assist you with your JIRA tickets and projects.
+										To enhance your experience, we recommend connecting your Atlassian (JIRA)
+										account. This allows us to better assist you with your JIRA tickets and
+										projects.
 									</p>
 									<div class="flex gap-3">
 										<button

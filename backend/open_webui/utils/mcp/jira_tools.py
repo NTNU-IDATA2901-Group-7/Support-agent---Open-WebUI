@@ -7,12 +7,16 @@ log = logging.getLogger(__name__)
 
 JIRA_DOMAIN = os.environ.get("JIRA_DOMAIN")
 JIRA_PROJECT_KEY = os.environ.get("JIRA_PROJECT_KEY")
-JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN = os.environ.get("JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN")
+JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN = os.environ.get(
+    "JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN"
+)
 
 BASE_URL = f"https://{JIRA_DOMAIN}/rest/api/3"
 
 
-async def search_jira_tickets_by_jql(jql_query: str, maxResults: int = 10) -> dict[str, list[dict[str, str]]]:
+async def search_jira_tickets_by_jql(
+    jql_query: str, maxResults: int = 10
+) -> dict[str, list[dict[str, str]]]:
     """
     Runs a Jira Query Language (JQL) search and returns a structured list of tickets.
 
@@ -51,7 +55,9 @@ async def search_jira_tickets_by_jql(jql_query: str, maxResults: int = 10) -> di
     }
     try:
         async with AsyncClient() as client:
-            response = await client.get(f"{BASE_URL}/search", headers=headers, params=params)
+            response = await client.get(
+                f"{BASE_URL}/search", headers=headers, params=params
+            )
         response.raise_for_status()
         data = response.json()
     except Exception as e:
@@ -65,14 +71,21 @@ async def search_jira_tickets_by_jql(jql_query: str, maxResults: int = 10) -> di
 
     results = []
     for issue in issues:
-        rendered_description = (issue.get("renderedFields") or {}).get("description") or ""
-        results.append({
-            "id": issue["id"],
-            "key": issue["key"],
-            "summary": issue["fields"].get("summary") or "No summary",
-            "description": markdownify(rendered_description) if rendered_description else "",
-            "status": (issue["fields"].get("status") or {}).get("name") or "Unknown status",
-        })
+        rendered_description = (issue.get("renderedFields") or {}).get(
+            "description"
+        ) or ""
+        results.append(
+            {
+                "id": issue["id"],
+                "key": issue["key"],
+                "summary": issue["fields"].get("summary") or "No summary",
+                "description": (
+                    markdownify(rendered_description) if rendered_description else ""
+                ),
+                "status": (issue["fields"].get("status") or {}).get("name")
+                or "Unknown status",
+            }
+        )
 
     log.info(f"Found {len(results)} issues from JQL: '{jql_query}'")
     for r in results:
@@ -124,17 +137,23 @@ async def get_jira_ticket_details_by_key(ticket_key: str) -> dict[str, dict[str,
 
     assignee_obj = fields.get("assignee")
     if assignee_obj:
-        assignee_info = f"{assignee_obj['displayName']} ({assignee_obj.get('emailAddress', '')})"
+        assignee_info = (
+            f"{assignee_obj['displayName']} ({assignee_obj.get('emailAddress', '')})"
+        )
     else:
         assignee_info = "Unassigned"
 
-    log.info(f"Fetched ticket {ticket_key}: '{fields.get('summary')}' (Status: {(fields.get('status') or {}).get('name')})")
+    log.info(
+        f"Fetched ticket {ticket_key}: '{fields.get('summary')}' (Status: {(fields.get('status') or {}).get('name')})"
+    )
 
     return {
         "ticket": {
             "key": issue["key"],
             "summary": fields.get("summary") or "No summary",
-            "description": markdownify(rendered_description) if rendered_description else "",
+            "description": (
+                markdownify(rendered_description) if rendered_description else ""
+            ),
             "status": (fields.get("status") or {}).get("name") or "Unknown status",
             "priority": (fields.get("priority") or {}).get("name") or "None",
             "assignee": assignee_info,

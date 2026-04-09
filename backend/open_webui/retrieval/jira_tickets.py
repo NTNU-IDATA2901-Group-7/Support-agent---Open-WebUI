@@ -25,6 +25,7 @@ BASE_URL = f"https://{JIRA_DOMAIN}/rest/api/3"
 # FETCH JIRA TICKETS
 # =================================================================================
 
+
 async def fetch_jira_tickets(oauth_access_token: str) -> list[dict]:
     """
     Fetch all Jira tickets for a given project and return as a list of dicts.
@@ -41,9 +42,9 @@ async def fetch_jira_tickets(oauth_access_token: str) -> list[dict]:
     # 2. Create a URL and a query that matches all tickets
     url = f"{BASE_URL}/search/jql"
     query = {
-        'jql': f'project = {JIRA_PROJECT_KEY} ORDER BY created DESC', 
-        'fields': 'created,status,assignee,type,status,description,summary,key',
-        'expand': 'renderedFields',
+        "jql": f"project = {JIRA_PROJECT_KEY} ORDER BY created DESC",
+        "fields": "created,status,assignee,type,status,description,summary,key",
+        "expand": "renderedFields",
     }
 
     # 3. GET the tickets from Jira
@@ -60,18 +61,22 @@ async def fetch_jira_tickets(oauth_access_token: str) -> list[dict]:
     log.info("Parsing fields of tickets JSONs.")
     # 4. Transform Jira format into our "tickets" list format
     tickets = []
-    for issue in jira_data['issues']:
-        rendered_description = (issue.get("renderedFields") or {}).get("description") or ""
-        tickets.append({
-            "id": issue['id'],
-            "key": issue['key'],
-            "created": issue['fields']['created'],
-            "status": issue['fields']['status']['name'],
-            "summary": issue['fields']['summary'],
-            "description": markdownify(rendered_description) if rendered_description else "",
-        })
+    for issue in jira_data["issues"]:
+        rendered_description = (issue.get("renderedFields") or {}).get(
+            "description"
+        ) or ""
+        tickets.append(
+            {
+                "id": issue["id"],
+                "key": issue["key"],
+                "created": issue["fields"]["created"],
+                "status": issue["fields"]["status"]["name"],
+                "summary": issue["fields"]["summary"],
+                "description": (
+                    markdownify(rendered_description) if rendered_description else ""
+                ),
+            }
+        )
 
     log.info(f"Fetched {len(tickets)} JIRA tickets")
     return tickets
-
-

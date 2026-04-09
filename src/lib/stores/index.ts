@@ -161,7 +161,7 @@ type Settings = {
 	detectArtifacts?: boolean;
 	showUpdateToast?: boolean;
 	showChangelog?: boolean;
-	featuresVersion?: string; 
+	featuresVersion?: string;
 	showEmojiInCall?: boolean;
 	voiceInterruption?: boolean;
 	collapseCodeBlocks?: boolean;

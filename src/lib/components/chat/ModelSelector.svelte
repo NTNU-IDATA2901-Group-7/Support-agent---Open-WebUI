@@ -116,7 +116,7 @@
 									stroke="currentColor"
 									class="size-3"
 								>
-								<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15" />
+									<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15" />
 								</svg>
 							</button>
 						</Tooltip>

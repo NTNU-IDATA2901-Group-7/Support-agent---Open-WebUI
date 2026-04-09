@@ -31,7 +31,7 @@
 		showSettings,
 		showShortcuts,
 		showChangelog,
-		showNewFeatures,    
+		showNewFeatures,
 		temporaryChatEnabled,
 		toolServers,
 		showSearch,
@@ -310,7 +310,7 @@
 
 <SettingsModal bind:show={$showSettings} />
 <ChangelogModal bind:show={$showChangelog} />
-<GuidedWalkthroughModal bind:show={$showNewFeatures} /> 
+<GuidedWalkthroughModal bind:show={$showNewFeatures} />
 
 {#if version && compareVersion(version.latest, version.current) && ($settings?.showUpdateToast ?? true)}
 	<div class=" absolute bottom-8 right-8 z-50" in:fade={{ duration: 100 }}>

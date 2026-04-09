@@ -255,7 +255,12 @@
 			<div
 				class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 p-6"
 			>
-				<h2 id="jira-ticket-modal-title" class="text-xl font-semibold text-gray-900 dark:text-white">Create JIRA Ticket</h2>
+				<h2
+					id="jira-ticket-modal-title"
+					class="text-xl font-semibold text-gray-900 dark:text-white"
+				>
+					Create JIRA Ticket
+				</h2>
 				<button
 					on:click={handleCancel}
 					class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"

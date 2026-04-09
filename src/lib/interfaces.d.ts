@@ -9,7 +9,7 @@ export interface Config {
 	enable_login_form?: boolean;
 	enable_web_search?: boolean;
 	enable_google_drive_integration?: boolean;
-	
+
 	// Extended optional properties
 	file?: {
 		max_count?: number;

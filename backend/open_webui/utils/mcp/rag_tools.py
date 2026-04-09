@@ -23,9 +23,10 @@ JIRA_COLLECTION = "jira_support_tickets"
 
 # ==================== MCP TOOLS ====================
 
+
 async def search_vector_db_for_similar_jira_tickets(
-        search_text: str,
-        top_k: int = 5,
+    search_text: str,
+    top_k: int = 5,
 ) -> str:
     """
     Summary:
@@ -39,29 +40,31 @@ async def search_vector_db_for_similar_jira_tickets(
     """
     log.info(f"Performing vector search via pgvector for search-text: '{search_text}'")
     pgVectorClient = PgvectorClient()
-    extra_params = {"key": RAG_AZURE_OPENAI_KEY,
-                    "azure_api_version": RAG_AZURE_OPENAI_VERSION,
-                    "url": RAG_AZURE_OPENAI_BASE_URL}
+    extra_params = {
+        "key": RAG_AZURE_OPENAI_KEY,
+        "azure_api_version": RAG_AZURE_OPENAI_VERSION,
+        "url": RAG_AZURE_OPENAI_BASE_URL,
+    }
     embedding = await generate_embeddings(
         engine="azure_openai",
         model=RAG_AZURE_OPENAI_MODEL,
         text=search_text,
         # prefix=None,
-        **extra_params
+        **extra_params,
     )
 
-    search_result = pgVectorClient.search(collection_name=JIRA_COLLECTION,
-                          vectors=[embedding],
-                          # filter=None,
-                          limit=top_k)
+    search_result = pgVectorClient.search(
+        collection_name=JIRA_COLLECTION,
+        vectors=[embedding],
+        # filter=None,
+        limit=top_k,
+    )
 
     if not search_result or not search_result.ids or not search_result.ids[0]:
         log.info("No similar Jira tickets found.")
         return "Relevant Jira tickets:\n\nNo similar tickets found."
     else:
-        log.info(f"Retrieved top {len(search_result.ids[0])} most relevant Jira tickets")
+        log.info(
+            f"Retrieved top {len(search_result.ids[0])} most relevant Jira tickets"
+        )
         return format_similar_jira_ticket_search_results(search_result)
-
-
-
-

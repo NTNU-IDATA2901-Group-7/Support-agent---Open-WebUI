@@ -758,7 +758,7 @@
 						/><circle class="spinner_qM83 spinner_ZTLf" cx="20" cy="12" r="3" /></svg
 					>
 				{:else}
-						<div
+					<div
 						class=" {rmsLevel * 100 > 4
 							? ' size-[4.5rem]'
 							: rmsLevel * 100 > 2

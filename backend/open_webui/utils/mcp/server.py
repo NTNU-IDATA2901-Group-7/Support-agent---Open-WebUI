@@ -22,7 +22,7 @@ from jira_tools import (
     search_jira_tickets_by_jql,
 )
 from rag_tools import (
-    search_vector_db_for_similar_jira_tickets
+    search_vector_db_for_similar_jira_tickets,
     # TODO: implement search_documentation
 )
 
@@ -44,6 +44,7 @@ server = Server("support-agent-tools")
 # TOOL CATALOG - What the LLM sees
 # ============================================================================
 
+
 @server.list_tools()
 async def handle_list_tools() -> list[Tool]:
     """
@@ -52,7 +53,6 @@ async def handle_list_tools() -> list[Tool]:
     """
     return [
         # ==================== JIRA TOOLS ====================
-
         Tool(
             name="search_jira_tickets_by_jql",
             description="""
@@ -74,20 +74,19 @@ async def handle_list_tools() -> list[Tool]:
                             "'project = TT AND status = \"To Do\"', "
                             "'assignee = currentUser() AND priority = High', "
                             "'created >= -7d ORDER BY created DESC'"
-                        )
+                        ),
                     },
                     "maxResults": {
                         "type": "integer",
                         "description": "Maximum number of tickets to return",
                         "default": 10,
                         "minimum": 1,
-                        "maximum": 100
-                    }
+                        "maximum": 100,
+                    },
                 },
-                "required": ["jql_query"]
-            }
+                "required": ["jql_query"],
+            },
         ),
-
         Tool(
             name="get_jira_ticket_details_by_key",
             description="""
@@ -102,18 +101,16 @@ async def handle_list_tools() -> list[Tool]:
                 "properties": {
                     "ticket_key": {
                         "type": "string",
-                        "description": "Jira ticket key (e.g., PROJ-123)"
+                        "description": "Jira ticket key (e.g., PROJ-123)",
                     }
                 },
-                "required": ["ticket_key"]
-            }
+                "required": ["ticket_key"],
+            },
         ),
-
         # ==================== RAG TOOLS ====================
-
         Tool(
-        name="search_vector_db_for_similar_jira_tickets",
-        description="""
+            name="search_vector_db_for_similar_jira_tickets",
+            description="""
         Search for Jira tickets semantically similar to a natural language query.
 
         **When to use:** User asks about existing tickets, bug reports, or similar issues.
@@ -127,31 +124,33 @@ async def handle_list_tools() -> list[Tool]:
                 "properties": {
                     "search_text": {
                         "type": "string",
-                        "description": "Natural language query describing what tickets to find"
+                        "description": "Natural language query describing what tickets to find",
                     },
                     "top_k": {
                         "type": "integer",
                         "description": "Maximum number of results to return",
                         "default": 5,
                         "minimum": 1,
-                        "maximum": 100
+                        "maximum": 100,
                     },
                     "similarity_cutoff": {
                         "type": "number",
                         "description": "Minimum similarity score (0.0-1.0). Higher = stricter matching.",
                         "default": 0.5,
                         "minimum": 0.0,
-                        "maximum": 1.0
-                    }
+                        "maximum": 1.0,
+                    },
                 },
-                "required": ["search_text"]
-            }
-        ),]
+                "required": ["search_text"],
+            },
+        ),
+    ]
 
 
 # ============================================================================
 # TOOL EXECUTION ROUTER
 # ============================================================================
+
 
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
@@ -169,19 +168,14 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
             result = await get_jira_ticket_details_by_key(
                 ticket_key=arguments["ticket_key"]
             )
-            return [TextContent(
-                type="text",
-                text=format_jira_ticket_details(result))]
+            return [TextContent(type="text", text=format_jira_ticket_details(result))]
 
         elif name == "search_jira_tickets_by_jql":
             result = await search_jira_tickets_by_jql(
                 jql_query=arguments["jql_query"],
-                maxResults=arguments.get("maxResults", 10)
+                maxResults=arguments.get("maxResults", 10),
             )
-            return [TextContent(
-                type="text",
-                text=format_jql_search_results(result)
-            )]
+            return [TextContent(type="text", text=format_jql_search_results(result))]
 
         # ==================== RAG TOOLS ====================
 
@@ -189,12 +183,13 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
             result = search_vector_db_for_similar_jira_tickets(
                 search_text=arguments["search_text"],
                 top_k=arguments.get("top_k", 5),
-                similarity_cutoff=arguments.get("similarity_cutoff", 0.5)
+                similarity_cutoff=arguments.get("similarity_cutoff", 0.5),
             )
-            return [TextContent(
-                type="text",
-                text=format_similar_jira_ticket_search_results(result)
-        )]
+            return [
+                TextContent(
+                    type="text", text=format_similar_jira_ticket_search_results(result)
+                )
+            ]
 
         # ==================== ERROR HANDLING ====================
 
@@ -210,6 +205,7 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
 # SERVER STARTUP
 # ============================================================================
 
+
 async def main():
     """Start the MCP server"""
     log.info("🚀 Starting Support Agent MCP Server...")
@@ -218,10 +214,9 @@ async def main():
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         # create_initialization_options() handles initialization automatically
         await server.run(
-            read_stream,
-            write_stream,
-            server.create_initialization_options()
+            read_stream, write_stream, server.create_initialization_options()
         )
+
 
 if __name__ == "__main__":
     asyncio.run(main())

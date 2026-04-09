@@ -1,4 +1,3 @@
-
 """HTTP endpoints for JIRA sync and create_issue"""
 
 import os
@@ -17,8 +16,12 @@ from open_webui.retrieval.vector.main import VectorItem
 from open_webui.models.files import Files
 from open_webui.storage.provider import Storage
 from open_webui.utils.auth import get_admin_user, get_verified_user
+
 # from open_webui.utils.jira.helpers import embed_jira_tickets
-from open_webui.utils.jira.formatters import description_text_to_adf, format_jira_ticket_for_embedding
+from open_webui.utils.jira.formatters import (
+    description_text_to_adf,
+    format_jira_ticket_for_embedding,
+)
 from open_webui.utils.embeddings import generate_embeddings
 from open_webui.models.oauth_sessions import OAuthSessions
 
@@ -67,7 +70,9 @@ async def _refresh_jira_token(session) -> dict | None:
             ) as resp:
                 if resp.status != 200:
                     error_text = await resp.text()
-                    log.error(f"JIRA token refresh failed: {resp.status} - {error_text}")
+                    log.error(
+                        f"JIRA token refresh failed: {resp.status} - {error_text}"
+                    )
                     return None
                 new_token = await resp.json()
     except Exception as e:
@@ -85,7 +90,9 @@ async def _refresh_jira_token(session) -> dict | None:
 
     new_token["issued_at"] = int(datetime.now().timestamp())
     if "expires_in" in new_token and "expires_at" not in new_token:
-        new_token["expires_at"] = int(datetime.now().timestamp()) + int(new_token["expires_in"])
+        new_token["expires_at"] = int(datetime.now().timestamp()) + int(
+            new_token["expires_in"]
+        )
 
     updated = OAuthSessions.update_session_by_id(session.id, new_token)
     if updated:
@@ -109,7 +116,9 @@ async def _get_jira_session(user_id: str):
         return None
 
     # Refresh if expiring within 5 minutes
-    if datetime.now() + timedelta(minutes=5) >= datetime.fromtimestamp(session.expires_at):
+    if datetime.now() + timedelta(minutes=5) >= datetime.fromtimestamp(
+        session.expires_at
+    ):
         log.debug(f"JIRA token near expiry for user {user_id}, refreshing")
         refreshed = await _refresh_jira_token(session)
         if refreshed:
@@ -141,6 +150,7 @@ def _get_jira_base_url(session) -> str:
 # =================================================================================
 # AUTOFILL
 # =================================================================================
+
 
 class JiraAutofillForm(BaseModel):
     messages: list[dict]
@@ -193,7 +203,9 @@ async def autofill_jira(
         content = response.json()["choices"][0]["message"]["content"]
         return json.loads(content)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to parse AI response as JSON")
+        raise HTTPException(
+            status_code=500, detail="Failed to parse AI response as JSON"
+        )
     except Exception as e:
         log.error(f"Jira autofill failed: {e}")
         raise HTTPException(status_code=502, detail=str(e))
@@ -202,6 +214,7 @@ async def autofill_jira(
 # =================================================================================
 # SYNC
 # =================================================================================
+
 
 # TODO: Test, and add documentation and detailed logging
 @router.post("/sync")
@@ -212,7 +225,10 @@ async def sync_jira(
     log.debug(f"User {user.id} requested syncing of JIRA tickets")
     jira_session = await _get_jira_session(user.id)
     if not jira_session:
-        raise HTTPException(status_code=401, detail="No JIRA OAuth session found. Please connect your JIRA account.")
+        raise HTTPException(
+            status_code=401,
+            detail="No JIRA OAuth session found. Please connect your JIRA account.",
+        )
 
     oauth_access_token = jira_session.token.get("access_token")
 
@@ -225,8 +241,9 @@ async def sync_jira(
                 "id": ticket["id"],
                 "key": ticket["key"],
                 "status": ticket["status"],
-                "created": ticket["created"]
-            } for ticket in tickets
+                "created": ticket["created"],
+            }
+            for ticket in tickets
         ]
 
         embedding_input = {
@@ -234,22 +251,19 @@ async def sync_jira(
             "input": texts,
         }
 
-        embedding_response = await generate_embeddings(request=request, form_data=embedding_input, user=user)
+        embedding_response = await generate_embeddings(
+            request=request, form_data=embedding_input, user=user
+        )
 
         vector_items = [
-            VectorItem(
-                id=meta["id"],
-                text=text,
-                vector=emb["embedding"],
-                metadata=meta
-            )
+            VectorItem(id=meta["id"], text=text, vector=emb["embedding"], metadata=meta)
             for emb, text, meta in zip(embedding_response["data"], texts, metadata_list)
         ]
 
         # Lazily initialize pgVectorClient only when needed
         pgVectorClient = PgvectorClient()
         pgVectorClient.upsert(collection_name=JIRA_COLLECTION, items=vector_items)
-        log.info('Successfully synced jira tickets with vector database')
+        log.info("Successfully synced jira tickets with vector database")
     except Exception as e:
         log.exception(f"JIRA sync failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -262,12 +276,10 @@ async def jira_status(user=Depends(get_verified_user)):
     return {"synced": has, "collection": JIRA_COLLECTION}
 
 
-
-
-
 # =================================================================================
 # PROJECT METADATA (issue types)
 # =================================================================================
+
 
 @router.get("/project-meta/{project_key}")
 async def get_project_meta(
@@ -292,8 +304,13 @@ async def get_project_meta(
         async with AsyncClient() as client:
             response = await client.get(url, headers=headers)
         if response.status_code >= 400:
-            log.error(f"Failed to fetch project meta: {response.status_code}: {response.text}")
-            raise HTTPException(status_code=502, detail=f"Jira API {response.status_code}: {response.text}")
+            log.error(
+                f"Failed to fetch project meta: {response.status_code}: {response.text}"
+            )
+            raise HTTPException(
+                status_code=502,
+                detail=f"Jira API {response.status_code}: {response.text}",
+            )
         data = response.json()
         issue_types = [
             {"id": it["id"], "name": it["name"], "subtask": it.get("subtask", False)}
@@ -311,6 +328,7 @@ async def get_project_meta(
 # CREATE ISSUE
 # =================================================================================
 
+
 class JiraCreateTicketForm(BaseModel):
     project_key: str
     summary: str
@@ -324,9 +342,9 @@ class JiraCreateTicketForm(BaseModel):
 
 @router.post("/create")
 async def create_issue(
-    form: JiraCreateTicketForm, # Body will be parsed into this Pydantic model
+    form: JiraCreateTicketForm,  # Body will be parsed into this Pydantic model
     request: Request,
-    user = Depends(get_verified_user)
+    user=Depends(get_verified_user),
 ) -> dict:
     """
     Create a Jira issue in a given project.
@@ -344,11 +362,16 @@ async def create_issue(
         The JSON response from Jira API (created issue info), and None if it fails to create the
     issue.
     """
-    log.debug(f"User {user.id} requested Jira issue creation in {form.project_key}, summary: {form.summary}")
+    log.debug(
+        f"User {user.id} requested Jira issue creation in {form.project_key}, summary: {form.summary}"
+    )
 
     jira_session = await _get_jira_session(user.id)
     if not jira_session:
-        raise HTTPException(status_code=401, detail="No JIRA OAuth session found. Please connect your JIRA account.")
+        raise HTTPException(
+            status_code=401,
+            detail="No JIRA OAuth session found. Please connect your JIRA account.",
+        )
 
     oauth_access_token = jira_session.token.get("access_token")
     jira_base_url = _get_jira_base_url(jira_session)
@@ -358,7 +381,7 @@ async def create_issue(
     headers = {
         "Authorization": f"Bearer {oauth_access_token}",
         "Accept": "application/json",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     # 3. Build payload
@@ -387,12 +410,16 @@ async def create_issue(
         if response.status_code >= 400:
             body = response.text
             log.error(f"Jira API error {response.status_code}: {body}")
-            raise HTTPException(status_code=502, detail=f"Jira API {response.status_code}: {body}")
+            raise HTTPException(
+                status_code=502, detail=f"Jira API {response.status_code}: {body}"
+            )
 
         result = response.json()
         issue_key = result.get("key")
         if not issue_key:
-            raise HTTPException(status_code=502, detail="Jira issue created but no key returned")
+            raise HTTPException(
+                status_code=502, detail="Jira issue created but no key returned"
+            )
         log.info(f"Created Jira issue {issue_key} in project {form.project_key}")
 
     except HTTPException:
@@ -400,7 +427,6 @@ async def create_issue(
     except Exception as e:
         log.error(f"Failed to create Jira issue: {e}")
         raise HTTPException(status_code=502, detail=str(e))
-
 
     # 5. Attach files (separate API calls)
     attachment_results = {"attached": [], "failed": []}
@@ -444,7 +470,9 @@ async def create_issue(
 
             except Exception as e:
                 log.warning(f"Failed to attach file {file_id} to {issue_key}: {e}")
-                attachment_results["failed"].append({"file_id": file_id, "error": str(e)})
+                attachment_results["failed"].append(
+                    {"file_id": file_id, "error": str(e)}
+                )
 
     if attachment_results["failed"]:
         raise HTTPException(
@@ -458,4 +486,3 @@ async def create_issue(
         )
 
     return result
-

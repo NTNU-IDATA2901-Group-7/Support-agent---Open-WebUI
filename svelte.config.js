@@ -50,7 +50,7 @@ const config = {
 			'export_let_unused',
 			'store_not_subscribe'
 		];
-		
+
 		if (!ignoreList.includes(warning.code)) {
 			console.warn(warning.message);
 		}

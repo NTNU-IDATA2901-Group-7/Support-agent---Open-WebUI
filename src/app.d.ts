@@ -64,4 +64,3 @@ declare module '$lib/interfaces' {
 }
 
 export {};
-

@@ -1406,10 +1406,10 @@ class OAuthManager:
         error_message = None
         is_jira_linking = False
         jira_link_user_id = None
-        
+
         # Import Users at the start so it's available throughout the function
         from open_webui.models.users import Users
-        
+
         try:
             client = self.get_client(provider)
 
@@ -1535,64 +1535,101 @@ class OAuthManager:
             # so we skip email extraction, domain checks, and user lookup.
             if is_jira_linking and jira_link_user_id:
                 try:
-                    log.info(f"[JIRA-LINK] Starting JIRA linking for user_id={jira_link_user_id}, provider={provider}")
+                    log.info(
+                        f"[JIRA-LINK] Starting JIRA linking for user_id={jira_link_user_id}, provider={provider}"
+                    )
 
                     user = Users.get_user_by_id(jira_link_user_id, db=db)
                     if not user:
                         log.error(f"[JIRA-LINK] User not found: {jira_link_user_id}")
-                        raise HTTPException(400, detail="User not found for JIRA linking")
+                        raise HTTPException(
+                            400, detail="User not found for JIRA linking"
+                        )
                     log.info(f"[JIRA-LINK] User verified: {user.id} ({user.email})")
 
                     atlassian_account_id = sub
-                    log.info(f"[JIRA-LINK] Atlassian account_id (sub): {atlassian_account_id}")
+                    log.info(
+                        f"[JIRA-LINK] Atlassian account_id (sub): {atlassian_account_id}"
+                    )
 
                     # Convert authlib OAuth2Token to a plain dict for safe JSON serialization
                     token_dict = dict(token)
-                    log.info(f"[JIRA-LINK] Token keys: {list(token_dict.keys())}, has access_token: {bool(token_dict.get('access_token'))}, has refresh_token: {bool(token_dict.get('refresh_token'))}")
+                    log.info(
+                        f"[JIRA-LINK] Token keys: {list(token_dict.keys())}, has access_token: {bool(token_dict.get('access_token'))}, has refresh_token: {bool(token_dict.get('refresh_token'))}"
+                    )
 
                     # Fetch accessible resources to get cloud_id
                     cloud_id = None
                     try:
                         access_token = token_dict.get("access_token", "")
                         headers = {"Authorization": f"Bearer {access_token}"}
-                        async with aiohttp.ClientSession(trust_env=True) as http_session:
+                        async with aiohttp.ClientSession(
+                            trust_env=True
+                        ) as http_session:
                             async with http_session.get(
                                 "https://api.atlassian.com/oauth/token/accessible-resources",
                                 headers=headers,
                                 ssl=AIOHTTP_CLIENT_SESSION_SSL,
                             ) as resp:
-                                log.info(f"[JIRA-LINK] accessible-resources status: {resp.status}")
+                                log.info(
+                                    f"[JIRA-LINK] accessible-resources status: {resp.status}"
+                                )
                                 if resp.ok:
                                     resources = await resp.json()
-                                    log.info(f"[JIRA-LINK] accessible-resources count: {len(resources) if resources else 0}")
+                                    log.info(
+                                        f"[JIRA-LINK] accessible-resources count: {len(resources) if resources else 0}"
+                                    )
                                     if resources and len(resources) > 0:
                                         cloud_id = resources[0].get("id")
-                                        log.info(f"[JIRA-LINK] Retrieved cloud_id: {cloud_id}, site: {resources[0].get('name', 'unknown')}")
+                                        log.info(
+                                            f"[JIRA-LINK] Retrieved cloud_id: {cloud_id}, site: {resources[0].get('name', 'unknown')}"
+                                        )
                                 else:
                                     resp_body = await resp.text()
-                                    log.warning(f"[JIRA-LINK] Failed to fetch accessible-resources: HTTP {resp.status} - {resp_body[:500]}")
+                                    log.warning(
+                                        f"[JIRA-LINK] Failed to fetch accessible-resources: HTTP {resp.status} - {resp_body[:500]}"
+                                    )
                     except Exception as e:
-                        log.warning(f"[JIRA-LINK] Error fetching accessible-resources: {e}")
+                        log.warning(
+                            f"[JIRA-LINK] Error fetching accessible-resources: {e}"
+                        )
 
                     # Enrich token dict with JIRA-specific metadata
                     token_dict["cloud_id"] = cloud_id
                     token_dict["atlassian_account_id"] = atlassian_account_id
                     token_dict["issued_at"] = int(datetime.now().timestamp())
                     if "expires_in" in token_dict and "expires_at" not in token_dict:
-                        token_dict["expires_at"] = int(datetime.now().timestamp()) + int(token_dict["expires_in"])
-                    if "expires_at" not in token_dict or token_dict["expires_at"] is None:
-                        token_dict["expires_at"] = int(datetime.now().timestamp()) + 3600
-                        log.warning("[JIRA-LINK] expires_at was missing, set fallback to 1 hour")
+                        token_dict["expires_at"] = int(
+                            datetime.now().timestamp()
+                        ) + int(token_dict["expires_in"])
+                    if (
+                        "expires_at" not in token_dict
+                        or token_dict["expires_at"] is None
+                    ):
+                        token_dict["expires_at"] = (
+                            int(datetime.now().timestamp()) + 3600
+                        )
+                        log.warning(
+                            "[JIRA-LINK] expires_at was missing, set fallback to 1 hour"
+                        )
                     else:
                         token_dict["expires_at"] = int(token_dict["expires_at"])
 
-                    log.info(f"[JIRA-LINK] Token enriched. cloud_id={cloud_id}, expires_at={token_dict.get('expires_at')}")
+                    log.info(
+                        f"[JIRA-LINK] Token enriched. cloud_id={cloud_id}, expires_at={token_dict.get('expires_at')}"
+                    )
 
                     # Clean up any existing atlassian sessions for this user
-                    existing_sessions = OAuthSessions.get_sessions_by_user_id(user.id, db=db)
-                    existing_atlassian = [s for s in existing_sessions if s.provider == provider]
+                    existing_sessions = OAuthSessions.get_sessions_by_user_id(
+                        user.id, db=db
+                    )
+                    existing_atlassian = [
+                        s for s in existing_sessions if s.provider == provider
+                    ]
                     if existing_atlassian:
-                        log.info(f"[JIRA-LINK] Deleting {len(existing_atlassian)} existing atlassian session(s)")
+                        log.info(
+                            f"[JIRA-LINK] Deleting {len(existing_atlassian)} existing atlassian session(s)"
+                        )
                         for existing in existing_atlassian:
                             OAuthSessions.delete_session_by_id(existing.id, db=db)
 
@@ -1604,18 +1641,28 @@ class OAuthManager:
                         db=db,
                     )
                     if not new_session:
-                        log.error("[JIRA-LINK] OAuthSessions.create_session returned None")
-                        raise HTTPException(500, detail="Failed to store Atlassian session in database")
+                        log.error(
+                            "[JIRA-LINK] OAuthSessions.create_session returned None"
+                        )
+                        raise HTTPException(
+                            500, detail="Failed to store Atlassian session in database"
+                        )
 
-                    log.info(f"[JIRA-LINK] Session stored: id={new_session.id}, provider={new_session.provider}, user={user.id}")
+                    log.info(
+                        f"[JIRA-LINK] Session stored: id={new_session.id}, provider={new_session.provider}, user={user.id}"
+                    )
 
                     jwt_token = create_token(
                         data={"id": user.id},
-                        expires_delta=parse_duration(auth_manager_config.JWT_EXPIRES_IN),
+                        expires_delta=parse_duration(
+                            auth_manager_config.JWT_EXPIRES_IN
+                        ),
                     )
 
                     redirect_url = f"{str(request.app.state.config.WEBUI_URL or request.base_url).rstrip('/')}/"
-                    log.info(f"[JIRA-LINK] Linking complete. Redirecting to {redirect_url}")
+                    log.info(
+                        f"[JIRA-LINK] Linking complete. Redirecting to {redirect_url}"
+                    )
 
                     response = RedirectResponse(
                         url=redirect_url,
@@ -1632,9 +1679,14 @@ class OAuthManager:
                 except HTTPException:
                     raise
                 except Exception as e:
-                    log.error(f"[JIRA-LINK] Unexpected error: {type(e).__name__}: {e}", exc_info=True)
-                    raise HTTPException(500, detail=f"Failed to link JIRA account: {type(e).__name__}: {e}")
-
+                    log.error(
+                        f"[JIRA-LINK] Unexpected error: {type(e).__name__}: {e}",
+                        exc_info=True,
+                    )
+                    raise HTTPException(
+                        500,
+                        detail=f"Failed to link JIRA account: {type(e).__name__}: {e}",
+                    )
 
             # Check if the user exists
             user = Users.get_user_by_oauth_sub(provider, sub, db=db)
@@ -1790,7 +1842,9 @@ class OAuthManager:
 
             # Calculate expires_at if we have expires_in
             if "expires_in" in token and "expires_at" not in token:
-                token["expires_at"] = int(datetime.now().timestamp()) + int(token["expires_in"])
+                token["expires_at"] = int(datetime.now().timestamp()) + int(
+                    token["expires_in"]
+                )
 
             # Ensure expires_at is always an int
             if "expires_at" in token and token["expires_at"] is not None:
