@@ -22,7 +22,7 @@ from open_webui.utils.jira.formatters import (
     description_text_to_adf,
     format_jira_ticket_for_embedding,
 )
-from open_webui.utils.embeddings import generate_embeddings
+from open_webui.retrieval.utils import generate_embeddings
 from open_webui.models.oauth_sessions import OAuthSessions
 
 from datetime import datetime, timedelta
@@ -39,6 +39,11 @@ router = APIRouter()
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_API_BASE_URL = os.environ.get("OPENAI_API_BASE_URL")
 OPENAI_API_VERSION = os.environ.get("RAG_AZURE_OPENAI_API_VERSION")
+
+RAG_AZURE_OPENAI_KEY = os.environ.get("RAG_AZURE_OPENAI_API_KEY")
+RAG_AZURE_OPENAI_VERSION = os.environ.get("RAG_AZURE_OPENAI_API_VERSION")
+RAG_AZURE_OPENAI_MODEL = os.environ.get("RAG_EMBEDDING_MODEL")
+RAG_AZURE_OPENAI_BASE_URL = os.environ.get("RAG_AZURE_OPENAI_BASE_URL")
 
 JIRA_CLOUD_ID_ENV = os.environ.get("JIRA_CLOUD_ID")
 JIRA_COLLECTION = "jira_support_tickets"
@@ -246,18 +251,26 @@ async def sync_jira(
             for ticket in tickets
         ]
 
-        embedding_input = {
-            "model": "text-embedding-ada-002",
-            "input": texts,
+        extra_params = {
+            "key": RAG_AZURE_OPENAI_KEY,
+            "azure_api_version": RAG_AZURE_OPENAI_VERSION,
+            "url": RAG_AZURE_OPENAI_BASE_URL,
         }
-
-        embedding_response = await generate_embeddings(
-            request=request, form_data=embedding_input, user=user
+        embeddings = await generate_embeddings(
+            engine="azure_openai",
+            model=RAG_AZURE_OPENAI_MODEL,
+            text=texts,
+            **extra_params,
         )
 
         vector_items = [
-            VectorItem(id=meta["id"], text=text, vector=emb["embedding"], metadata=meta)
-            for emb, text, meta in zip(embedding_response["data"], texts, metadata_list)
+            {
+                "id": meta["id"],
+                "text": text,
+                "vector": emb,
+                "metadata": meta,
+            }
+            for emb, text, meta in zip(embeddings, texts, metadata_list)
         ]
 
         # Lazily initialize pgVectorClient only when needed

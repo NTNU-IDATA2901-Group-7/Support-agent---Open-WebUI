@@ -22,40 +22,7 @@ def description_text_to_adf(description: str) -> dict:
     }
 
 
-def format_similar_jira_ticket_search_results(result: dict) -> str:
-    """
-    Formats Jira search results into a structured text block optimized for LLM context.
-
-    Args:
-        result (dict): Output from search_vector_db_for_similar_jira_tickets
-
-    Returns:
-        str: Formatted text block
-    """
-    results = result.get("results", [])
-    log.info(f"Formatting Jira ticket search results ({len(results)} results)")
-
-    if not results:
-        return "Relevant Jira tickets:\n\nNo similar tickets found."
-
-    lines = [f"Top {len(results)} most relevant Jira tickets:\n"]
-
-    for i, r in enumerate(results, 1):
-        key = r.get("key", "Unknown")
-        summary = r.get("summary", "")
-        score = r.get("score", 0.0)
-
-        lines.append(f"[{i}]")
-        lines.append(f"Key: {key}")
-        lines.append(f"Summary: {summary}")
-        lines.append(f"Similarity: {score:.2f}")
-        lines.append("")
-
-    log.info("Finished formatting Jira ticket search results")
-    return "\n".join(lines)
-
-
-def format_similar_jira_ticket_search_results_new(result) -> str:
+def format_similar_jira_ticket_search_results(result) -> str:
     """
     Formats Jira tickets search result into a structured text block for LLM context.
     Args:
