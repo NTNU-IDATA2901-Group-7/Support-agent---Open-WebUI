@@ -3,29 +3,23 @@ RESULT FORMATTERS - Converts data to LLM-readable text
 """
 
 import logging
+
 log = logging.getLogger(__name__)
 
 
 # ==================== JIRA FORMATTERS ====================
+
 
 def description_text_to_adf(description: str) -> dict:
     """Convert plain description text to ADF (Atlassian Document Format) - used by create_issue
     method"""
     return {
         "content": [
-        {
-          "content": [
-            {
-              "text": description,
-              "type": "text"
-            }
-          ],
-          "type": "paragraph"
-        }
+            {"content": [{"text": description, "type": "text"}], "type": "paragraph"}
         ],
         "type": "doc",
-        "version": 1
-}
+        "version": 1,
+    }
 
 
 def format_similar_jira_ticket_search_results(result) -> str:
@@ -50,13 +44,13 @@ def format_similar_jira_ticket_search_results(result) -> str:
     for i, (doc_id, doc_text, meta, score) in enumerate(rows, 1):
         lines.append(f"[{i}]")
         lines.append(f"Key: {meta.get('key', doc_id)}")
-        lines.append(f"Summary: {meta.get('summary', doc_text[:80] if doc_text else '')}")
+        lines.append(
+            f"Summary: {meta.get('summary', doc_text[:80] if doc_text else '')}"
+        )
         lines.append(f"Similarity: {score:.2f}\n")
     str_result = "\n".join(lines)
     log.debug(str_result)
     return str_result
-
-
 
 
 def format_jira_ticket_details(ticket_dict: dict) -> str:
@@ -108,6 +102,7 @@ def format_jira_ticket_for_embedding(ticket: dict) -> str:
 
 # ==================== RAG FORMATTERS ====================
 
+
 def format_jql_search_results(result: dict) -> str:
     """
     Format JQL search results into readable text for LLM or display.
@@ -143,6 +138,3 @@ def format_jql_search_results(result: dict) -> str:
         lines.append("")
 
     return "\n".join(lines)
-
-
-
