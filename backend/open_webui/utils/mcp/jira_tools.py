@@ -1,16 +1,20 @@
 import os
 import logging
+from base64 import b64encode
 from httpx import AsyncClient
 from markdownify import markdownify
 
 log = logging.getLogger(__name__)
 
 JIRA_PROJECT_KEY = os.environ.get("JIRA_PROJECT_KEY")
-JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN = os.environ.get(
-    "JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN"
-)
+JIRA_SERVICE_ACCOUNT_EMAIL = os.environ.get("JIRA_SERVICE_ACCOUNT_EMAIL")
+JIRA_SERVICE_ACCOUNT_API_TOKEN = os.environ.get("JIRA_SERVICE_ACCOUNT_API_TOKEN")
 
 BASE_URL = os.environ.get("JIRA_API_BASE_URL")
+
+_basic_credentials = b64encode(
+    f"{JIRA_SERVICE_ACCOUNT_EMAIL}:{JIRA_SERVICE_ACCOUNT_API_TOKEN}".encode()
+).decode()
 
 
 async def search_jira_tickets_by_jql(
@@ -43,7 +47,7 @@ async def search_jira_tickets_by_jql(
     """
     log.info(f"Searching Jira with JQL: '{jql_query}' (maxResults={maxResults})")
     headers = {
-        "Authorization": f"Bearer {JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN}",
+        "Authorization": f"Basic {_basic_credentials}",
         "Accept": "application/json",
     }
     params = {
@@ -115,7 +119,7 @@ async def get_jira_ticket_details_by_key(ticket_key: str) -> dict[str, dict[str,
     """
     log.info(f"Fetching Jira ticket: {ticket_key}")
     headers = {
-        "Authorization": f"Bearer {JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN}",
+        "Authorization": f"Basic {_basic_credentials}",
         "Accept": "application/json",
     }
     try:
