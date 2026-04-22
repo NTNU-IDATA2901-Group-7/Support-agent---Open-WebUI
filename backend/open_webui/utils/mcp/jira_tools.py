@@ -5,13 +5,12 @@ from markdownify import markdownify
 
 log = logging.getLogger(__name__)
 
-JIRA_DOMAIN = os.environ.get("JIRA_DOMAIN")
 JIRA_PROJECT_KEY = os.environ.get("JIRA_PROJECT_KEY")
 JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN = os.environ.get(
     "JIRA_SERVICE_ACCOUNT_OAUTH_ACCESS_TOKEN"
 )
 
-BASE_URL = f"https://{JIRA_DOMAIN}/rest/api/3"
+BASE_URL = os.environ.get("JIRA_API_BASE_URL")
 
 
 async def search_jira_tickets_by_jql(
@@ -56,7 +55,7 @@ async def search_jira_tickets_by_jql(
     try:
         async with AsyncClient() as client:
             response = await client.get(
-                f"{BASE_URL}/search", headers=headers, params=params
+                f"{BASE_URL}/search/jql", headers=headers, params=params
             )
         response.raise_for_status()
         data = response.json()
