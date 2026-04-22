@@ -6,7 +6,6 @@ Imported by MCP server.
 
 import logging
 import os
-from open_webui.utils.jira.formatters import format_similar_jira_ticket_search_results
 from open_webui.retrieval.utils import generate_embeddings
 from open_webui.retrieval.vector.dbs.pgvector import PgvectorClient
 
@@ -62,9 +61,9 @@ async def search_vector_db_for_similar_jira_tickets(
 
     if not search_result or not search_result.ids or not search_result.ids[0]:
         log.info("No similar Jira tickets found.")
-        return "Relevant Jira tickets:\n\nNo similar tickets found."
+        return None
     else:
         log.info(
             f"Retrieved top {len(search_result.ids[0])} most relevant Jira tickets"
         )
-        return format_similar_jira_ticket_search_results(search_result)
+        return search_result

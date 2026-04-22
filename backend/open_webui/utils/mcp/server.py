@@ -122,10 +122,13 @@ async def search_vector_db_for_similar_jira_tickets_tool(
     :param similarity_cutoff: Minimum similarity score (0.0-1.0). Higher = stricter matching.
     """
     log.info(f"MCP Tool called: search_vector_db_for_similar_jira_tickets")
-    return await search_vector_db_for_similar_jira_tickets(
+    result = await search_vector_db_for_similar_jira_tickets(
         search_text=search_text,
         top_k=top_k,
     )
+    if result is None:
+        return "No similar tickets found."
+    return format_similar_jira_ticket_search_results(result)
 
 
 # ============================================================================
