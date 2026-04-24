@@ -125,6 +125,7 @@ async def search_vector_db_for_similar_jira_tickets_tool(
     result = await search_vector_db_for_similar_jira_tickets(
         search_text=search_text,
         top_k=top_k,
+        similarity_cutoff=similarity_cutoff,
     )
     if result is None:
         return "No similar tickets found."
