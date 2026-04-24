@@ -1,0 +1,22 @@
+# Retrieval tests — assert that specific ticket keys appear in vector search results.
+#
+# Each case sends a query through the full agent pipeline and checks that
+# the vector search tool returns results containing the expected ticket keys.
+#
+# expected_keys: ticket keys that MUST appear in the results (subset check).
+# The query must trigger the search_vector_db_for_similar_jira_tickets_tool.
+
+- id: houston_problem
+  input: "Search for tickets about Houston and problems in space"
+  expected_keys:
+    - TESTSUPP-21  # "Huston we have a problem" / "Trace to the stars"
+
+- id: test_message_nodes
+  input: "Search for tickets about testmelding from node solwr"
+  expected_keys:
+    - TESTSUPP-35  # test - Dette er en testmelding / test.node.solwr.com
+
+- id: component_creation
+  input: "Search for tickets about testing components ved opprettelse"
+  expected_keys:
+    - TESTSUPP-47  # testComponents / teste komponent ved opprettelse
