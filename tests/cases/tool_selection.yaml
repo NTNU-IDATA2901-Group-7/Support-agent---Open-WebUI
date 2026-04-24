@@ -1,0 +1,83 @@
+
+# ── Semantic search: descriptive queries ──────────────────────
+# Queries are explicit enough that the model should reliably use
+# the vector search tool rather than answering from general knowledge.
+
+- id: barcode_scanner_setup
+  input: "Search for previous tickets about setting up a new barcode scanner"
+  expected_tools:
+    - search_vector_db_for_similar_jira_tickets_tool
+
+- id: pick_list_missing
+  input: "Search for similar issues where the pick list isn't showing up in WMS"
+  expected_tools:
+    - search_vector_db_for_similar_jira_tickets_tool
+
+- id: login_issue
+  input: "Find tickets related to users not being able to log into the portal"
+  expected_tools:
+    - search_vector_db_for_similar_jira_tickets_tool
+
+- id: label_printer_error
+  input: "Search for tickets about label printer error code E-204"
+  expected_tools:
+    - search_vector_db_for_similar_jira_tickets_tool
+
+- id: inventory_sync
+  input: "Find previous issues where inventory numbers in WMS don't match the ERP"
+  expected_tools:
+    - search_vector_db_for_similar_jira_tickets_tool
+
+# ── Direct ticket lookup: specific ticket key ────────────────
+
+- id: specific_ticket_lookup
+  input: "What's the status of PROJ-123?"
+  expected_tools:
+    - get_jira_ticket_details_by_key_tool
+
+- id: specific_ticket_details
+  input: "Show me the details for TT-456"
+  expected_tools:
+    - get_jira_ticket_details_by_key_tool
+
+# ── JQL search: structured filtering ─────────────────────────
+
+- id: jql_by_assignee
+  input: "Show me all open tickets assigned to me"
+  expected_tools:
+    - search_jira_tickets_by_jql_tool
+
+- id: jql_recent_critical
+  input: "What critical priority tickets were created this week?"
+  expected_tools:
+    - search_jira_tickets_by_jql_tool
+
+# ── Out of scope: should call NO tools ───────────────────────
+
+- id: meaning_of_life
+  input: "What is the meaning of life?"
+  expected_tools: []
+
+- id: job_application
+  input: "Can you help me write a job application?"
+  expected_tools: []
+
+- id: weather
+  input: "What's the weather like in Oslo today?"
+  expected_tools: []
+
+- id: recipe_request
+  input: "Give me a recipe for chocolate cake"
+  expected_tools: []
+
+- id: math_homework
+  input: "Solve this equation: 2x + 5 = 17"
+  expected_tools: []
+
+- id: code_review
+  input: "Can you review my Python code for a sorting algorithm?"
+  expected_tools: []
+
+- id: general_tech_support
+  input: "My iPhone screen is cracked, how do I fix it?"
+  expected_tools: []
