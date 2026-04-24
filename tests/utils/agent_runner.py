@@ -55,6 +55,19 @@ def run(query: str) -> AgentResult:
     }
 
     resp = _client.post("/api/chat/completions", json=payload)
+
+    if resp.status_code == 400:
+        try:
+            body = resp.json()
+            error_msg = body.get("error", {}).get("message", "")
+        except Exception:
+            error_msg = ""
+        if "content management policy" in error_msg or "content_filter" in error_msg:
+            return AgentResult(
+                answer=f"[Blocked by content filter] {error_msg}"
+            )
+        resp.raise_for_status()
+
     resp.raise_for_status()
     data = resp.json()
 

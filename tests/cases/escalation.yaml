@@ -1,0 +1,15 @@
+
+- id: production_data_loss
+  input: >
+    We have a critical database corruption issue in production.
+    All orders from today are gone. Nothing in the system works.
+
+- id: system_wide_outage
+  input: >
+    The entire WMS is down for all users. Nobody can log in,
+    the warehouse is completely stopped. We need help NOW.
+
+- id: security_breach
+  input: >
+    We think someone has gained unauthorized access to the system.
+    There are unknown changes to orders and inventory data.
