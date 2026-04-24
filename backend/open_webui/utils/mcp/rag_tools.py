@@ -82,4 +82,8 @@ async def search_vector_db_for_similar_jira_tickets(
     search_result.distances[0] = [search_result.distances[0][i] for i in keep]
 
     log.info(f"Retrieved {len(keep)} Jira tickets above cutoff {similarity_cutoff}")
+    for rank, i in enumerate(keep, 1):
+        key = search_result.metadatas[0][rank - 1].get("key", search_result.ids[0][rank - 1])
+        score = search_result.distances[0][rank - 1]
+        log.info(f"  #{rank}  {key}  (similarity: {score:.4f})")
     return search_result
