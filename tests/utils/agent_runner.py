@@ -36,6 +36,40 @@ OPEN_WEBUI_MODEL = os.environ.get("OPEN_WEBUI_MODEL", "gpt-4.1-mini")
 TOOL_IDS = json.loads(
     os.environ.get("OPEN_WEBUI_TOOL_IDS", '["server:support-agent-tools"]')
 )
+_knowledge_ids: list[str] | None = None
+
+
+def _get_knowledge_ids() -> list[str]:
+    """Fetch all knowledge base IDs from the Open WebUI API.
+
+    Cached after the first call so we only hit the API once per session.
+    """
+    global _knowledge_ids
+    if _knowledge_ids is not None:
+        return _knowledge_ids
+
+    token, _ = _get_jwt()
+    resp = httpx.get(
+        f"{OPEN_WEBUI_URL}/api/v1/knowledge/",
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    # The API returns either {"items": [...], "total": N} or a plain list.
+    if isinstance(data, dict):
+        items = data.get("items", data)
+    else:
+        items = data
+
+    # Extract the ID from each knowledge base entry.
+    _knowledge_ids = []
+    for kb in items:
+        if kb.get("id"):
+            _knowledge_ids.append(kb["id"])
+
+    return _knowledge_ids
 
 SOCKET_TIMEOUT = int(os.environ.get("AGENT_RUNNER_TIMEOUT", "60"))
 
@@ -232,6 +266,9 @@ def run(query: str) -> AgentResult:
             "messages": [{"role": "user", "content": query}],
             "stream": True,
             "tool_ids": TOOL_IDS,
+            "files": [
+                {"type": "collection", "id": kid} for kid in _get_knowledge_ids()
+            ],
             "chat_id": chat_id,
             "id": message_id,
             "session_id": str(uuid4()),
