@@ -47,6 +47,7 @@ async def search_vector_db_for_similar_jira_tickets(
         "azure_api_version": RAG_AZURE_OPENAI_VERSION,
         "url": RAG_AZURE_OPENAI_BASE_URL,
     }
+
     embedding = await generate_embeddings(
         engine="azure_openai",
         model=RAG_AZURE_OPENAI_MODEL,

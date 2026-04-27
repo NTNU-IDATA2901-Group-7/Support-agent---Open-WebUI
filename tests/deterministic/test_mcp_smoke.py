@@ -67,7 +67,7 @@ def test_vector_search_executes():
     async def _check(session: ClientSession):
         result = await session.call_tool(
             "search_vector_db_for_similar_jira_tickets_tool",
-            {"search_text": "login issue", "top_k": 3},
+            {"search_text": "login issue"},
         )
         return result
 

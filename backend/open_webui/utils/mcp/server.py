@@ -41,6 +41,10 @@ log = logging.getLogger(__name__)
 
 MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(os.environ.get("MCP_PORT", "8000"))
+VECTOR_SEARCH_TOP_K = int(os.environ.get("VECTOR_SEARCH_TOP_K", "5"))
+VECTOR_SEARCH_SIMILARITY_CUTOFF = float(
+    os.environ.get("VECTOR_SEARCH_SIMILARITY_CUTOFF", "0.5")
+)
 
 server = FastMCP(
     "support-agent-tools",
@@ -70,8 +74,8 @@ async def search_jira_tickets_by_jql_tool(
     Use this for structured queries. For semantic/meaning-based search,
     use search_vector_db_for_similar_jira_tickets_tool instead.
 
-    :param jql_query: JQL query string. Examples: 'project = TT AND status = "To Do"', 'assignee = currentUser() AND priority = High', 'created >= -7d ORDER BY created DESC'
-    :param maxResults: Maximum number of tickets to return (1-100)
+    :param jql_query: JQL query string. Examples: 'project = SR AND status = "To Do"', 'assignee = currentUser() AND priority = High', 'created >= -7d ORDER BY created DESC'
+    :param maxResults: Maximum number of tickets to return (1-20, default 10)
     """
     log.info(f"MCP Tool called: search_jira_tickets_by_jql")
     result = await search_jira_tickets_by_jql(
@@ -105,8 +109,6 @@ async def get_jira_ticket_details_by_key_tool(ticket_key: str) -> str:
 @server.tool()
 async def search_vector_db_for_similar_jira_tickets_tool(
     search_text: str,
-    top_k: Annotated[int, Field(ge=1, le=100)] = 5,
-    similarity_cutoff: Annotated[float, Field(ge=0.0, le=1.0)] = 0.5,
 ) -> str:
     """
     Search for Jira tickets semantically similar to a natural language query.
@@ -115,17 +117,15 @@ async def search_vector_db_for_similar_jira_tickets_tool(
     Input: Natural language description (e.g., "login button not working", "payment processing errors")
     Output: List of similar tickets with keys, summaries, status, and similarity scores.
 
-    Results are filtered by similarity_cutoff to ensure relevance.
+    Retrieval parameters are fixed server-side to keep RAG evaluation stable.
 
     :param search_text: Natural language query describing what tickets to find
-    :param top_k: Maximum number of results to return (1-100)
-    :param similarity_cutoff: Minimum similarity score (0.0-1.0). Higher = stricter matching.
     """
     log.info(f"MCP Tool called: search_vector_db_for_similar_jira_tickets")
     result = await search_vector_db_for_similar_jira_tickets(
         search_text=search_text,
-        top_k=top_k,
-        similarity_cutoff=similarity_cutoff,
+        top_k=VECTOR_SEARCH_TOP_K,
+        similarity_cutoff=VECTOR_SEARCH_SIMILARITY_CUTOFF,
     )
     if result is None:
         return "No similar tickets found."

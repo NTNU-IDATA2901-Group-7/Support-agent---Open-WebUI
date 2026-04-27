@@ -1,20 +1,12 @@
-import os
 import logging
-from base64 import b64encode
-from httpx import AsyncClient
+import os
 from markdownify import markdownify
+
+from open_webui.utils.jira.client import jira_api_get
 
 log = logging.getLogger(__name__)
 
 JIRA_PROJECT_KEY = os.environ.get("JIRA_PROJECT_KEY")
-JIRA_SERVICE_ACCOUNT_EMAIL = os.environ.get("JIRA_SERVICE_ACCOUNT_EMAIL")
-JIRA_SERVICE_ACCOUNT_API_TOKEN = os.environ.get("JIRA_SERVICE_ACCOUNT_API_TOKEN")
-
-BASE_URL = os.environ.get("JIRA_API_BASE_URL")
-
-_basic_credentials = b64encode(
-    f"{JIRA_SERVICE_ACCOUNT_EMAIL}:{JIRA_SERVICE_ACCOUNT_API_TOKEN}".encode()
-).decode()
 
 
 async def search_jira_tickets_by_jql(
@@ -46,10 +38,6 @@ async def search_jira_tickets_by_jql(
         RuntimeError: If the JQL request fails (e.g., network issue, bad authentication).
     """
     log.info(f"Searching Jira with JQL: '{jql_query}' (maxResults={maxResults})")
-    headers = {
-        "Authorization": f"Basic {_basic_credentials}",
-        "Accept": "application/json",
-    }
     params = {
         "jql": jql_query,
         "maxResults": maxResults,
@@ -57,12 +45,7 @@ async def search_jira_tickets_by_jql(
         "expand": "renderedFields",
     }
     try:
-        async with AsyncClient() as client:
-            response = await client.get(
-                f"{BASE_URL}/search/jql", headers=headers, params=params
-            )
-        response.raise_for_status()
-        data = response.json()
+        data = await jira_api_get("/search/jql", params=params)
     except Exception as e:
         log.exception(f"JQL request failed: {e}")
         raise RuntimeError(f"JQL request failed: {e}")
@@ -118,19 +101,11 @@ async def get_jira_ticket_details_by_key(ticket_key: str) -> dict[str, dict[str,
         RuntimeError: If the ticket cannot be fetched.
     """
     log.info(f"Fetching Jira ticket: {ticket_key}")
-    headers = {
-        "Authorization": f"Basic {_basic_credentials}",
-        "Accept": "application/json",
-    }
     try:
-        async with AsyncClient() as client:
-            response = await client.get(
-                f"{BASE_URL}/issue/{ticket_key}",
-                headers=headers,
-                params={"expand": "renderedFields"},
-            )
-        response.raise_for_status()
-        issue = response.json()
+        issue = await jira_api_get(
+            f"/issue/{ticket_key}",
+            params={"expand": "renderedFields"},
+        )
     except Exception as e:
         log.error(f"Failed to fetch ticket {ticket_key}: {e}")
         raise RuntimeError(f"Failed to fetch ticket {ticket_key}: {e}")
