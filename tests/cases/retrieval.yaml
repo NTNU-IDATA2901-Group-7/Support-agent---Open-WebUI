@@ -1,22 +1,158 @@
-# Retrieval tests — assert that specific ticket keys appear in vector search results.
+# Retrieval tests — deterministic key-based retrieval evaluation.
 #
 # Each case sends a query through the full agent pipeline and checks that
 # the vector search tool returns results containing the expected ticket keys.
 #
-# expected_keys: ticket keys that MUST appear in the results (subset check).
-# The query must trigger the search_vector_db_for_similar_jira_tickets_tool.
+# Ticket pool: docs/jira-tickets-pool.md (100 most recent closed tickets)
+#
+# expected_keys: tickets from the pool that are clearly relevant to the query.
+# The vector search returns top-5 by cosine similarity, so expected_keys
+# should be the tickets most semantically similar to the input query.
 
-- id: houston_problem
-  input: "Search for tickets about Houston and problems in space"
-  expected_keys:
-    - TESTSUPP-21  # "Huston we have a problem" / "Trace to the stars"
+# ── Missing packing slip reference (pakkseddelref) ─────────────
+# Large cluster: SR-15404, SR-15387, SR-15378, SR-15334, SR-15329,
+# SR-15310, SR-15305, SR-15290, SR-15267, SR-15214, SR-15182,
+# SR-15183, SR-15160, SR-15126, SR-15101, SR-15089, SR-14960,
+# SR-15270, SR-15252, SR-15312
 
-- id: test_message_nodes
-  input: "Search for tickets about testmelding from node solwr"
+- id: missing_packing_slip_ref_tm
+  input: "Butikk mangler pakkseddelreferanse på T&M levering"
   expected_keys:
-    - TESTSUPP-35  # test - Dette er en testmelding / test.node.solwr.com
+    - SR-15404
+    - SR-15334
+    - SR-15310
+    - SR-15214
+    - SR-15182
+    - SR-15305
 
-- id: component_creation
-  input: "Search for tickets about testing components ved opprettelse"
+- id: missing_packing_slip_rdi_cd
+  input: "Flere ordrer mangler pakkseddel på RDI CD levering fra Bergen"
   expected_keys:
-    - TESTSUPP-47  # testComponents / teste komponent ved opprettelse
+    - SR-15270
+    - SR-15252
+    - SR-15312
+    - SR-15305
+
+- id: missing_packing_slip_general
+  input: "Kunde mangler pakkseddel på levering, ordre ikke fakturert"
+  expected_keys:
+    - SR-15404
+    - SR-15387
+    - SR-15378
+    - SR-15267
+    - SR-15160
+    - SR-15089
+    - SR-15183
+    - SR-14960
+    - SR-15126
+
+# ── Missing goods receipt (varemottak) ──────────────────────────
+# Cluster: SR-15394, SR-15390, SR-15336, SR-15354, SR-15335,
+# SR-15311, SR-15308, SR-14443, SR-14070, SR-13580, SR-13794
+
+- id: missing_goods_receipt_tobacco
+  input: "Flere butikker mangler varemottak på tobakk og medisin"
+  expected_keys:
+    - SR-15308
+    - SR-15311
+    - SR-15335
+    - SR-15336
+    - SR-15354
+
+- id: missing_goods_receipt_general
+  input: "Butikk melder om manglende varemottak på dagens levering"
+  expected_keys:
+    - SR-15394
+    - SR-15390
+    - SR-15335
+    - SR-14443
+    - SR-14070
+    - SR-13580
+    - SR-13794
+
+# ── Orders stuck in wrong status ───────────────────────────────
+# Cluster: SR-15350, SR-15430, SR-15396, SR-15391, SR-14709,
+# SR-14573, SR-14252, SR-14132, SR-14099, SR-14081, SR-14005,
+# SR-13510, SR-13772, SR-13618, SR-13554
+
+- id: orders_stuck_sent_to_picking
+  input: "Ordrer som er ferdig plukket blir stående i status Sendt til plukk"
+  expected_keys:
+    - SR-15430
+    - SR-14709
+    - SR-14005
+    - SR-13510
+    - SR-14070
+    - SR-13554
+
+- id: orders_wrong_status_not_invoiced
+  input: "Ferdigplukket ordrer har feil status og blir ikke fakturert"
+  expected_keys:
+    - SR-15350
+    - SR-14709
+    - SR-14573
+    - SR-14132
+    - SR-14099
+    - SR-14081
+    - SR-14252
+
+# ── Invoice / credit errors ────────────────────────────────────
+# Cluster: SR-14823, SR-15244, SR-12677, SR-12216, SR-11282,
+# SR-10103, SR-13754
+
+- id: double_credit_claims
+  input: "Reklamasjoner blir kreditert dobbelt med to ulike fakturanummer"
+  expected_keys:
+    - SR-14823
+    - SR-11282
+
+- id: invoice_deviation_amount
+  input: "Feil avviksbeløp eller øredifferanse på innkjøpsfaktura"
+  expected_keys:
+    - SR-15244
+    - SR-10103
+    - SR-12216
+    - SR-12677
+
+# ── Production stops / connection issues ────────────────────────
+# Cluster: SR-14891, SR-14096, SR-14135, SR-14672, SR-14392,
+# SR-13979, SR-14013
+
+- id: production_restart_trondheim
+  input: "Trondheim produksjon stoppet og måtte restartes"
+  expected_keys:
+    - SR-14096
+    - SR-14135
+    - SR-14672
+    - SR-14392
+
+- id: oms_connection_issues
+  input: "OMS går tom for connections og blir treg, ordre hoper seg opp"
+  expected_keys:
+    - SR-13979
+    - SR-14672
+    - SR-14013
+
+# ── Delivery date / order deadline errors ───────────────────────
+# Cluster: SR-15419, SR-15409, SR-12087
+
+- id: delivery_date_wrong_after_import
+  input: "Bulk import legger ordrer til feil leveringsdag"
+  expected_keys:
+    - SR-15419
+    - SR-12087
+
+- id: order_deadline_shifted
+  input: "Ordrefrister i masterplanen er kastet rundt etter endring"
+  expected_keys:
+    - SR-15409
+
+# ── Missing order confirmations ─────────────────────────────────
+# Cluster: SR-13815, SR-12232, SR-12506, SR-15392
+
+- id: missing_order_confirmation
+  input: "Butikk mangler ordrebekreftelse og strykliste på levering"
+  expected_keys:
+    - SR-13815
+    - SR-12232
+    - SR-12506

@@ -247,10 +247,16 @@ class _EventCollector:
 # ---------------------------------------------------------------------------
 
 
-def run(query: str) -> AgentResult:
+def run(query: str, include_files: bool = True) -> AgentResult:
     """Send a query through Open WebUI and return the agent's response.
 
     Uses Socket.IO to receive the full response including tool execution results.
+
+    Args:
+        query: The user message to send.
+        include_files: Whether to attach knowledge base files. Set to False
+            when testing tool invocation (e.g. retrieval tests) so that
+            pre-injected RAG context doesn't short-circuit tool calls.
     """
     token, user_id = _get_jwt()
 
@@ -266,14 +272,16 @@ def run(query: str) -> AgentResult:
             "messages": [{"role": "user", "content": query}],
             "stream": True,
             "tool_ids": TOOL_IDS,
-            "files": [
-                {"type": "collection", "id": kid} for kid in _get_knowledge_ids()
-            ],
             "chat_id": chat_id,
             "id": message_id,
             "session_id": str(uuid4()),
             "params": {"function_calling": "native"},
         }
+
+        if include_files:
+            payload["files"] = [
+                {"type": "collection", "id": kid} for kid in _get_knowledge_ids()
+            ]
 
         resp = httpx.post(
             f"{OPEN_WEBUI_URL}/api/chat/completions",
