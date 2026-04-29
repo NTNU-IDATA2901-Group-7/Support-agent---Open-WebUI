@@ -1,5 +1,6 @@
 """HTTP endpoints for JIRA sync and create_issue"""
 
+import asyncio
 import os
 import json
 import logging
@@ -24,6 +25,7 @@ from open_webui.utils.jira.formatters import (
 )
 from open_webui.retrieval.utils import generate_embeddings
 from open_webui.models.oauth_sessions import OAuthSessions
+from open_webui.config import PersistentConfig
 
 from datetime import datetime, timedelta
 import aiohttp
@@ -52,6 +54,15 @@ JIRA_OAUTH_PROVIDER = "atlassian"
 ATLASSIAN_TOKEN_URL = "https://auth.atlassian.com/oauth/token"
 ATLASSIAN_CLIENT_ID = os.environ.get("ATLASSIAN_CLIENT_ID", "")
 ATLASSIAN_CLIENT_SECRET = os.environ.get("ATLASSIAN_CLIENT_SECRET", "")
+
+JIRA_LAST_SYNCED_AT = PersistentConfig(
+    "JIRA_LAST_SYNCED_AT", "jira.last_synced_at", ""
+)
+JIRA_LAST_WIPED_AT = PersistentConfig(
+    "JIRA_LAST_WIPED_AT", "jira.last_wiped_at", ""
+)
+
+JIRA_POLL_INTERVAL_SECONDS = int(os.environ.get("JIRA_POLL_INTERVAL_SECONDS", "300"))
 
 
 async def _refresh_jira_token(session) -> dict | None:
@@ -301,6 +312,22 @@ async def _sync_jira_tickets(since: str | None = None):
         f"{len(fetched_ids) - len(new_tickets)} unchanged"
     )
     return len(new_tickets)
+
+
+async def _poll_jira_loop():
+    """Background loop: periodically fetch recently closed tickets and upsert them."""
+    log.info(f"Jira polling started (interval: {JIRA_POLL_INTERVAL_SECONDS}s)")
+    while True:
+        await asyncio.sleep(JIRA_POLL_INTERVAL_SECONDS)
+        try:
+            since = JIRA_LAST_SYNCED_AT.value or None
+            count = await _sync_jira_tickets(since=since)
+            if count:
+                log.info(f"Jira poll: embedded {count} new tickets")
+            else:
+                log.debug("Jira poll: no new tickets")
+        except Exception as e:
+            log.error(f"Jira poll failed: {e}")
 
 
 @router.post("/sync")
