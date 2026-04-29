@@ -95,6 +95,11 @@ def format_jira_ticket_for_embedding(ticket: dict) -> str:
     lines = [
         f"Summary: {ticket.get('summary', '')}",
         f"Description: {ticket.get('description', '')}",
+        f"Key: {ticket.get('key', '')}",
+        f"Status: {ticket.get('status', '')}",
+        f"Type: {ticket.get('issue_type', '')}",
+        f"Priority: {ticket.get('priority', '')}",
+        f"Assignee: {ticket.get('assignee', '')}",
     ]
 
     return "\n".join(lines)

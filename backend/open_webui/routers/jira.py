@@ -231,7 +231,78 @@ async def autofill_jira(
 # =================================================================================
 
 
-# TODO: Test, and add documentation and detailed logging
+async def _sync_jira_tickets(since: str | None = None):
+    """Core sync logic: fetch tickets, deduplicate, embed, upsert. Used by endpoint and poller."""
+    tickets = await fetch_jira_tickets(since=since)
+    fetched_ids = {t["id"] for t in tickets}
+
+    pgVectorClient = PgvectorClient()
+    existing = pgVectorClient.get(collection_name=JIRA_COLLECTION)
+    existing_ids = set(existing.ids[0]) if existing else set()
+
+    new_tickets = [t for t in tickets if t["id"] not in existing_ids]
+
+    # Only remove stale tickets on a full sync (no since filter)
+    stale_ids = []
+    if not since:
+        stale_ids = list(existing_ids - fetched_ids)
+        if stale_ids:
+            pgVectorClient.delete(collection_name=JIRA_COLLECTION, ids=stale_ids)
+            log.info(f"Deleted {len(stale_ids)} stale tickets from vector DB")
+
+    JIRA_LAST_SYNCED_AT.value = datetime.now().isoformat()
+    JIRA_LAST_SYNCED_AT.save()
+
+    if not new_tickets:
+        log.info("No new tickets to embed, vector DB is up to date")
+        return 0
+
+    texts = [format_jira_ticket_for_embedding(t) for t in new_tickets]
+    metadata_list = [
+        {
+            "id": t["id"],
+            "key": t["key"],
+            "status": t["status"],
+            "created": t["created"],
+            "issue_type": t.get("issue_type", ""),
+            "priority": t.get("priority", ""),
+            "assignee": t.get("assignee", ""),
+        }
+        for t in new_tickets
+    ]
+
+    extra_params = {
+        "key": RAG_AZURE_OPENAI_KEY,
+        "azure_api_version": RAG_AZURE_OPENAI_VERSION,
+        "url": RAG_AZURE_OPENAI_BASE_URL,
+    }
+    embeddings = await generate_embeddings(
+        engine="azure_openai",
+        model=RAG_AZURE_OPENAI_MODEL,
+        text=texts,
+        **extra_params,
+    )
+
+    vector_items = [
+        {
+            "id": meta["id"],
+            "text": text,
+            "vector": emb,
+            "metadata": meta,
+        }
+        for emb, text, meta in zip(embeddings, texts, metadata_list)
+    ]
+
+    pgVectorClient.upsert(collection_name=JIRA_COLLECTION, items=vector_items)
+
+    log.info(
+        f"Synced JIRA tickets: {len(new_tickets)} embedded, "
+        f"{len(stale_ids)} stale deleted, "
+        f"{len(fetched_ids) - len(new_tickets)} unchanged"
+    )
+    return len(new_tickets)
+
+
 @router.post("/sync")
 async def sync_jira(
     request: Request,
@@ -239,78 +310,39 @@ async def sync_jira(
 ):
     log.debug(f"User {user.id} requested syncing of JIRA tickets")
     try:
-        tickets = await fetch_jira_tickets()
-        fetched_ids = {t["id"] for t in tickets}
-
-        # Check which tickets are already in the vector DB
-        pgVectorClient = PgvectorClient()
-        existing = pgVectorClient.get(collection_name=JIRA_COLLECTION)
-        existing_ids = set(existing.ids[0]) if existing else set()
-
-        # Only embed tickets that aren't already in the DB
-        new_tickets = [t for t in tickets if t["id"] not in existing_ids]
-
-        # Delete stale tickets that are no longer in the fetched batch
-        stale_ids = list(existing_ids - fetched_ids)
-        if stale_ids:
-            pgVectorClient.delete(
-                collection_name=JIRA_COLLECTION, ids=stale_ids
-            )
-            log.info(f"Deleted {len(stale_ids)} stale tickets from vector DB")
-
-        if not new_tickets:
-            log.info("No new tickets to embed, vector DB is up to date")
-            return
-
-        texts = [format_jira_ticket_for_embedding(t) for t in new_tickets]
-        metadata_list = [
-            {
-                "id": t["id"],
-                "key": t["key"],
-                "status": t["status"],
-                "created": t["created"],
-            }
-            for t in new_tickets
-        ]
-
-        extra_params = {
-            "key": RAG_AZURE_OPENAI_KEY,
-            "azure_api_version": RAG_AZURE_OPENAI_VERSION,
-            "url": RAG_AZURE_OPENAI_BASE_URL,
-        }
-        embeddings = await generate_embeddings(
-            engine="azure_openai",
-            model=RAG_AZURE_OPENAI_MODEL,
-            text=texts,
-            **extra_params,
-        )
-
-        vector_items = [
-            {
-                "id": meta["id"],
-                "text": text,
-                "vector": emb,
-                "metadata": meta,
-            }
-            for emb, text, meta in zip(embeddings, texts, metadata_list)
-        ]
-
-        pgVectorClient.upsert(collection_name=JIRA_COLLECTION, items=vector_items)
-        log.info(
-            f"Synced JIRA tickets: {len(new_tickets)} embedded, "
-            f"{len(stale_ids)} stale deleted, "
-            f"{len(fetched_ids) - len(new_tickets)} unchanged"
-        )
+        await _sync_jira_tickets()
     except Exception as e:
         log.exception(f"JIRA sync failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# TODO: Add when it was last synced - timestamp needs to be passed when upserting collection
+@router.delete("/wipe")
+async def wipe_jira_collection(user=Depends(get_admin_user)):
+    """Delete all Jira tickets from the vector DB so the next sync re-embeds everything."""
+    pgVectorClient = PgvectorClient()
+    pgVectorClient.delete_collection(JIRA_COLLECTION)
+
+    JIRA_LAST_WIPED_AT.value = datetime.now().isoformat()
+    JIRA_LAST_WIPED_AT.save()
+
+    log.info(f"Wiped collection '{JIRA_COLLECTION}'")
+    return {"status": "ok", "collection": JIRA_COLLECTION}
+
+
 @router.get("/status")
 async def jira_status(user=Depends(get_verified_user)):
     has = VECTOR_DB_CLIENT.has_collection(JIRA_COLLECTION)
-    return {"synced": has, "collection": JIRA_COLLECTION}
+    last_synced = JIRA_LAST_SYNCED_AT.value or None
+    last_wiped = JIRA_LAST_WIPED_AT.value or None
+    # If wiped after the last sync, consider it not synced
+    if last_wiped and (not last_synced or last_wiped > last_synced):
+        has = False
+    return {
+        "synced": has,
+        "collection": JIRA_COLLECTION,
+        "last_synced_at": last_synced,
+        "last_wiped_at": last_wiped,
+    }
 
 
 # =================================================================================

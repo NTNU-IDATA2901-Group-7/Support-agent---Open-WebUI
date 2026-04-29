@@ -23,14 +23,21 @@ JIRA_PROJECT_KEY = os.environ.get("JIRA_PROJECT_KEY")
 # =================================================================================
 
 
-async def fetch_jira_tickets() -> list[dict]:
+async def fetch_jira_tickets(since: str | None = None) -> list[dict]:
     """
-    Fetch all Jira tickets for a given project and return as a list of dicts.
+    Fetch Jira tickets for a given project and return as a list of dicts.
+    If `since` is provided (ISO timestamp), only fetch tickets updated after that time.
     """
+    jql = f"project = {JIRA_PROJECT_KEY} AND status = Closed"
+    if since:
+        # Jira JQL expects 'yyyy-MM-dd HH:mm' format
+        jql += f' AND updated >= "{since[:16].replace("T", " ")}"'
+    jql += " ORDER BY updated DESC"
+
     query = {
-        "jql": f"project = {JIRA_PROJECT_KEY} AND status = Closed ORDER BY updated DESC",
-        "maxResults": 20,
-        "fields": "created,status,assignee,type,status,description,summary,key",
+        "jql": jql,
+        "maxResults": 100,
+        "fields": "created,status,assignee,issuetype,priority,description,summary,key",
         "expand": "renderedFields",
     }
 
@@ -47,16 +54,21 @@ async def fetch_jira_tickets() -> list[dict]:
         rendered_description = (issue.get("renderedFields") or {}).get(
             "description"
         ) or ""
+        fields = issue["fields"]
+        assignee_obj = fields.get("assignee")
         tickets.append(
             {
                 "id": issue["id"],
                 "key": issue["key"],
-                "created": issue["fields"]["created"],
-                "status": issue["fields"]["status"]["name"],
-                "summary": issue["fields"]["summary"],
+                "created": fields["created"],
+                "status": fields["status"]["name"],
+                "summary": fields["summary"],
                 "description": (
                     markdownify(rendered_description) if rendered_description else ""
                 ),
+                "issue_type": (fields.get("issuetype") or {}).get("name", ""),
+                "priority": (fields.get("priority") or {}).get("name", ""),
+                "assignee": assignee_obj["displayName"] if assignee_obj else "",
             }
         )
 
