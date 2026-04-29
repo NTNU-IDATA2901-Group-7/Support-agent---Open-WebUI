@@ -19,6 +19,7 @@ from mcp.server.fastmcp import FastMCP
 # Import tool implementations
 from open_webui.utils.mcp.jira_tools import (
     get_jira_ticket_details_by_key,
+    get_jira_ticket_comments,
     search_jira_tickets_by_jql,
 )
 from open_webui.utils.mcp.rag_tools import (
@@ -101,6 +102,32 @@ async def get_jira_ticket_details_by_key_tool(ticket_key: str) -> str:
         ticket_key=ticket_key,
     )
     return format_jira_ticket_details(result)
+
+
+@server.tool()
+async def get_jira_ticket_comments_tool(ticket_key: str) -> str:
+    """
+    Fetch the comments/solution thread for a Jira ticket.
+
+    When to use: After finding a relevant ticket via search, use this to read how
+    the issue was actually resolved. The comments contain the solution and discussion.
+    Input: Jira ticket key like "SR-123"
+    Output: List of comments with author, timestamp, and content.
+
+    :param ticket_key: Jira ticket key (e.g., SR-123)
+    """
+    log.info(f"MCP Tool called: get_jira_ticket_comments")
+    result = await get_jira_ticket_comments(ticket_key=ticket_key)
+    comments = result.get("comments", [])
+    if not comments:
+        return f"No comments found for {ticket_key}."
+
+    lines = [f"Comments for {ticket_key} ({len(comments)} comments):\n"]
+    for i, comment in enumerate(comments, 1):
+        lines.append(f"[{i}] {comment['author']} ({comment['created']}):")
+        lines.append(comment["body"])
+        lines.append("")
+    return "\n".join(lines)
 
 
 # ==================== RAG TOOLS ====================
