@@ -16,6 +16,8 @@ __pycache__/
 *$py.class
 .nvmrc
 CLAUDE.md
+mcp-architecture.md
+.deepeval/
 # C extensions
 *.so
 

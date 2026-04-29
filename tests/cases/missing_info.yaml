@@ -1,0 +1,33 @@
+# Missing info detection — agent should ask for clarification instead of proceeding.
+#
+# Each query is deliberately missing key information that the agent needs.
+# The agent should ask a follow-up question rather than guessing or giving
+# a generic answer.
+
+# ── Missing ticket key ────────────────────────────────────────
+- id: ticket_status_no_key
+  input: "What's the status of my ticket?"
+
+- id: ticket_update_no_key
+  input: "Can you update my ticket with a comment?"
+
+# ── Missing specifics for search ──────────────────────────────
+- id: vague_problem
+  input: "I have a problem"
+
+- id: vague_not_working
+  input: "It's not working"
+
+# ── Missing order/reference number ────────────────────────────
+- id: order_issue_no_number
+  input: "There's an issue with my order"
+
+- id: shipment_tracking_no_ref
+  input: "Where is my shipment?"
+
+# ── Missing error details ────────────────────────────────────
+- id: error_no_details
+  input: "I keep getting an error message"
+
+- id: system_issue_no_context
+  input: "The system crashed"

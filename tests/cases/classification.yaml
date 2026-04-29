@@ -1,0 +1,39 @@
+
+- id: warehouse_outage
+  input: >
+    Hele lagersystemet er nede. Plukklister vises ikke og vi kan ikke
+    registrere varemottak. Alt på lageret har stoppet opp.
+  expected_priority: critical
+  expected_components:
+    - WMS
+
+- id: late_deliveries
+  input: >
+    Flere leveranser som skulle vært levert i dag har ikke blitt rutet.
+    Transportplanleggeren viser ingen ruter for i dag.
+  expected_priority: high
+  expected_components:
+    - TMS
+
+- id: order_sync_error
+  input: >
+    Ordrer fra nettbutikken kommer ikke inn i systemet.
+    Kunder klager på at de ikke får ordrebekreftelse.
+  expected_priority: high
+  expected_components:
+    - OMS
+
+- id: picking_and_shipping
+  input: >
+    Plukklisten oppdateres ikke når vi fullfører plukk, og
+    fraktbrevet blir ikke generert automatisk etterpå.
+  expected_priority: medium
+  expected_components:
+    - WMS
+    - TMS
+
+- id: minor_label_issue
+  input: "Fraktlabelen skriver ut med feil skriftstørrelse, men den er fortsatt lesbar."
+  expected_priority: low
+  expected_components:
+    - TMS

@@ -1,0 +1,26 @@
+
+# Norwegian input — agent should respond in Norwegian
+- id: scanner_setup_norwegian
+  input: "Hvordan setter jeg opp en ny strekkodeskanner i WMS?"
+  expected_language: Norwegian
+
+- id: pick_list_issue_norwegian
+  input: "Plukklisten viser feil antall på noen varer"
+  expected_language: Norwegian
+
+- id: login_problem_norwegian
+  input: "Jeg får ikke logget inn i portalen, hva gjør jeg?"
+  expected_language: Norwegian
+
+# English input — agent should respond in English
+- id: scanner_setup_english
+  input: "How do I set up a new barcode scanner in WMS?"
+  expected_language: English
+
+- id: pick_list_issue_english
+  input: "The pick list is showing the wrong quantities"
+  expected_language: English
+
+- id: login_problem_english
+  input: "I can't log into the portal, what do I do?"
+  expected_language: English

@@ -46,6 +46,7 @@ RAG_AZURE_OPENAI_MODEL = os.environ.get("RAG_EMBEDDING_MODEL")
 RAG_AZURE_OPENAI_BASE_URL = os.environ.get("RAG_AZURE_OPENAI_BASE_URL")
 
 JIRA_CLOUD_ID_ENV = os.environ.get("JIRA_CLOUD_ID")
+JIRA_CREATE_ISSUE_PROJECT_KEY = os.environ.get("JIRA_CREATE_ISSUE_PROJECT_KEY", "TESTSUPP")
 JIRA_COLLECTION = "jira_support_tickets"
 JIRA_OAUTH_PROVIDER = "atlassian"
 ATLASSIAN_TOKEN_URL = "https://auth.atlassian.com/oauth/token"
@@ -172,9 +173,18 @@ async def autofill_jira(
     """
     system_prompt = (
         "You are an IT support ticket assistant. Given a conversation between a user "
-        "and an AI support agent, generate a Jira ticket with the following fields:\n"
-        "- title: A concise summary of the issue (max 100 characters)\n"
-        "- description: A detailed description including what the user tried and expected behaviour\n"
+        "and an AI support agent, generate a Jira ticket on behalf of the user.\n\n"
+        "Write the ticket from the user's first-person perspective, as if the user "
+        "is filing it themselves. Use 'I' and 'my' (e.g. 'I tried...', 'I expected...', "
+        "'my screen shows...'). Do NOT use third-person phrasing like 'the user reports', "
+        "'the user tried', or 'they encountered'. Only include information the user "
+        "actually provided in the conversation — do not attribute the AI agent's "
+        "suggestions or explanations to the user.\n\n"
+        "Fields:\n"
+        "- title: A concise summary of the issue (max 100 characters). Neutral phrasing "
+        "is fine here (e.g. 'Cannot log in to Trace WMS') — no need for 'I' in the title.\n"
+        "- description: A detailed description in first person, covering what I was "
+        "trying to do, what I tried, what happened, and what I expected to happen.\n"
         "- urgency: One of 'A', 'B', or 'C' where:\n"
         "    A = Critical/blocking, major system failure or complete inability to work\n"
         "    B = Significant impact, workaround exists\n"
@@ -228,27 +238,39 @@ async def sync_jira(
     user=Depends(get_admin_user),
 ):
     log.debug(f"User {user.id} requested syncing of JIRA tickets")
-    jira_session = await _get_jira_session(user.id)
-    if not jira_session:
-        raise HTTPException(
-            status_code=401,
-            detail="No JIRA OAuth session found. Please connect your JIRA account.",
-        )
-
-    oauth_access_token = jira_session.token.get("access_token")
-
     try:
-        tickets = await fetch_jira_tickets(oauth_access_token)
+        tickets = await fetch_jira_tickets()
+        fetched_ids = {t["id"] for t in tickets}
 
-        texts = [format_jira_ticket_for_embedding(ticket) for ticket in tickets]
+        # Check which tickets are already in the vector DB
+        pgVectorClient = PgvectorClient()
+        existing = pgVectorClient.get(collection_name=JIRA_COLLECTION)
+        existing_ids = set(existing.ids[0]) if existing else set()
+
+        # Only embed tickets that aren't already in the DB
+        new_tickets = [t for t in tickets if t["id"] not in existing_ids]
+
+        # Delete stale tickets that are no longer in the fetched batch
+        stale_ids = list(existing_ids - fetched_ids)
+        if stale_ids:
+            pgVectorClient.delete(
+                collection_name=JIRA_COLLECTION, ids=stale_ids
+            )
+            log.info(f"Deleted {len(stale_ids)} stale tickets from vector DB")
+
+        if not new_tickets:
+            log.info("No new tickets to embed, vector DB is up to date")
+            return
+
+        texts = [format_jira_ticket_for_embedding(t) for t in new_tickets]
         metadata_list = [
             {
-                "id": ticket["id"],
-                "key": ticket["key"],
-                "status": ticket["status"],
-                "created": ticket["created"],
+                "id": t["id"],
+                "key": t["key"],
+                "status": t["status"],
+                "created": t["created"],
             }
-            for ticket in tickets
+            for t in new_tickets
         ]
 
         extra_params = {
@@ -273,10 +295,12 @@ async def sync_jira(
             for emb, text, meta in zip(embeddings, texts, metadata_list)
         ]
 
-        # Lazily initialize pgVectorClient only when needed
-        pgVectorClient = PgvectorClient()
         pgVectorClient.upsert(collection_name=JIRA_COLLECTION, items=vector_items)
-        log.info("Successfully synced jira tickets with vector database")
+        log.info(
+            f"Synced JIRA tickets: {len(new_tickets)} embedded, "
+            f"{len(stale_ids)} stale deleted, "
+            f"{len(fetched_ids) - len(new_tickets)} unchanged"
+        )
     except Exception as e:
         log.exception(f"JIRA sync failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -343,7 +367,6 @@ async def get_project_meta(
 
 
 class JiraCreateTicketForm(BaseModel):
-    project_key: str
     summary: str
     description: str
     priority: str
@@ -375,8 +398,9 @@ async def create_issue(
         The JSON response from Jira API (created issue info), and None if it fails to create the
     issue.
     """
+    project_key = JIRA_CREATE_ISSUE_PROJECT_KEY
     log.debug(
-        f"User {user.id} requested Jira issue creation in {form.project_key}, summary: {form.summary}"
+        f"User {user.id} requested Jira issue creation in {project_key}, summary: {form.summary}"
     )
 
     jira_session = await _get_jira_session(user.id)
@@ -400,7 +424,7 @@ async def create_issue(
     # 3. Build payload
     log.debug(f"Building payload")
     fields = {
-        "project": {"key": form.project_key},
+        "project": {"key": project_key},
         "summary": form.summary,
         "description": description_text_to_adf(form.description),
         "priority": {"name": form.priority},
@@ -433,7 +457,7 @@ async def create_issue(
             raise HTTPException(
                 status_code=502, detail="Jira issue created but no key returned"
             )
-        log.info(f"Created Jira issue {issue_key} in project {form.project_key}")
+        log.info(f"Created Jira issue {issue_key} in project {project_key}")
 
     except HTTPException:
         raise
