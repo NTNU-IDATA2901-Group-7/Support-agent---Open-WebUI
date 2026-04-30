@@ -249,14 +249,25 @@ async def _sync_jira_tickets(since: str | None = None):
 
     pgVectorClient = PgvectorClient()
     existing = pgVectorClient.get(collection_name=JIRA_COLLECTION)
-    existing_ids = set(existing.ids[0]) if existing else set()
 
-    new_tickets = [t for t in tickets if t["id"] not in existing_ids]
+    # Build lookup of existing metadata and documents by ID
+    existing_meta = {}
+    existing_docs = {}
+    if existing and existing.ids[0]:
+        for i, eid in enumerate(existing.ids[0]):
+            existing_meta[eid] = existing.metadatas[0][i] if existing.metadatas[0] else {}
+            existing_docs[eid] = existing.documents[0][i] if existing.documents[0] else ""
+
+    # Determine which tickets need (re-)embedding
+    tickets_to_upsert = []
+    for t in tickets:
+        if t["id"] not in existing_docs or format_jira_ticket_for_embedding(t) != existing_docs[t["id"]]:
+            tickets_to_upsert.append(t)
 
     # Only remove stale tickets on a full sync (no since filter)
     stale_ids = []
     if not since:
-        stale_ids = list(existing_ids - fetched_ids)
+        stale_ids = list(set(existing_docs.keys()) - fetched_ids)
         if stale_ids:
             pgVectorClient.delete(collection_name=JIRA_COLLECTION, ids=stale_ids)
             log.info(f"Deleted {len(stale_ids)} stale tickets from vector DB")
@@ -264,23 +275,29 @@ async def _sync_jira_tickets(since: str | None = None):
     JIRA_LAST_SYNCED_AT.value = datetime.now().isoformat()
     JIRA_LAST_SYNCED_AT.save()
 
-    if not new_tickets:
-        log.info("No new tickets to embed, vector DB is up to date")
+    if not tickets_to_upsert:
+        log.info("No new or updated tickets to embed, vector DB is up to date")
         return 0
 
-    texts = [format_jira_ticket_for_embedding(t) for t in new_tickets]
-    metadata_list = [
-        {
+    texts = [format_jira_ticket_for_embedding(t) for t in tickets_to_upsert]
+    metadata_list = []
+    for t in tickets_to_upsert:
+        meta = {
             "id": t["id"],
             "key": t["key"],
             "status": t["status"],
             "created": t["created"],
-            "issue_type": t.get("issue_type", ""),
-            "priority": t.get("priority", ""),
-            "assignee": t.get("assignee", ""),
+            "issue_type": t["issue_type"],
+            "priority": t["priority"],
+            "assignee": t["assignee"],
         }
-        for t in new_tickets
-    ]
+        # Preserve cached solution/comment_count from RAG retrieval
+        old = existing_meta.get(t["id"], {})
+        if old.get("solution"):
+            meta["solution"] = old["solution"]
+        if "comment_count" in old:
+            meta["comment_count"] = old["comment_count"]
+        metadata_list.append(meta)
 
     extra_params = {
         "key": RAG_AZURE_OPENAI_KEY,
@@ -307,11 +324,11 @@ async def _sync_jira_tickets(since: str | None = None):
     pgVectorClient.upsert(collection_name=JIRA_COLLECTION, items=vector_items)
 
     log.info(
-        f"Synced JIRA tickets: {len(new_tickets)} embedded, "
+        f"Synced JIRA tickets: {len(tickets_to_upsert)} upserted, "
         f"{len(stale_ids)} stale deleted, "
-        f"{len(fetched_ids) - len(new_tickets)} unchanged"
+        f"{len(fetched_ids) - len(tickets_to_upsert)} unchanged"
     )
-    return len(new_tickets)
+    return len(tickets_to_upsert)
 
 
 async def _poll_jira_loop():
