@@ -162,19 +162,45 @@ async def search_vector_db_for_similar_jira_tickets(
         key = meta.get("key", ids[rank - 1] if rank - 1 < len(ids) else "?")
         log.info(f"  #{rank}  {key}  (score: {score:.4f})")
 
-    # Fetch and summarize comments for all tickets in parallel
+    # Fetch and summarize comments, with caching in DB metadata
     async def _fetch_and_summarize(meta, doc_text):
         key = meta.get("key")
+        ticket_id = meta.get("id")
         if not key:
             return
+
         try:
+            # Check current comment count (maxResults=0 fetches no bodies, just the total)
+            count_data = await jira_api_get(
+                f"/issue/{key}/comment", params={"maxResults": 0}
+            )
+            current_count = count_data.get("total", 0)  # default 0 if field missing
+            cached_count = meta.get("comment_count", -1)  # -1 = no cache yet (avoids false hit on 0-comment tickets)
+
+            # Cache hit: solution exists and comment count unchanged
+            if meta.get("solution") and current_count == cached_count:
+                log.info(f"Using cached solution for {key}")
+                return
+
+            # Cache miss: fetch comments, summarize, persist
             comments_result = await get_jira_ticket_comments(key)
             comments = comments_result.get("comments", [])
             if comments:
-                summary = doc_text.split("\n")[0]  # "Summary: ..."
+                summary = doc_text.split("\n")[0]
                 meta["solution"] = await _summarize_comments(key, summary, comments)
             else:
                 meta["solution"] = "No comments found."
+            meta["comment_count"] = current_count
+
+            # Write back to DB so next retrieval is instant
+            chunk = pgVectorClient.session.query(DocumentChunk).filter(
+                DocumentChunk.id == ticket_id
+            ).first()
+            if chunk:
+                chunk.vmetadata["solution"] = meta["solution"]
+                chunk.vmetadata["comment_count"] = current_count
+                pgVectorClient.session.commit()
+                log.info(f"Cached solution for {key} ({current_count} comments)")
         except Exception as e:
             log.warning(f"Failed to fetch/summarize comments for {key}: {e}")
 
