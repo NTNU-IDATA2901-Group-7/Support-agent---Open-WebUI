@@ -20,15 +20,18 @@ CASES = load_yaml("correctness.yaml")
 correctness_metric = GEval(
     name="Factual correctness",
     model=judge_model,
-    criteria=(
-        "The agent's response must contain the key facts from the expected "
-        "output. Check that specific numbers, definitions, procedures, and "
-        "named entities match. The response may use a different language "
-        "than the expected output (e.g. Norwegian vs English) — evaluate "
-        "semantic equivalence, not literal wording. Minor omissions of "
-        "non-essential details are acceptable, but core facts must be present "
-        "and accurate."
-    ),
+    evaluation_steps=[
+        "Identify the key facts in the expected output: specific numbers, "
+        "definitions, procedures, and named entities.",
+        "For each key fact, check whether it is present and accurate in the "
+        "actual output.",
+        "The response may use a different language than the expected output "
+        "(e.g. Norwegian vs English) — evaluate semantic equivalence, not "
+        "literal wording.",
+        "Minor omissions of non-essential details are acceptable, but core "
+        "facts must be present and accurate.",
+        "Penalize hallucinated facts that contradict the expected output.",
+    ],
     evaluation_params=[
         LLMTestCaseParams.INPUT,
         LLMTestCaseParams.ACTUAL_OUTPUT,

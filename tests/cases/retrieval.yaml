@@ -1,4 +1,4 @@
-# Retrieval tests — deterministic key-based retrieval evaluation.
+# Retrieval tests — assertion-based key-based retrieval evaluation.
 #
 # Each case sends a query through the full agent pipeline and checks that
 # the vector search tool returns results containing the expected ticket keys.

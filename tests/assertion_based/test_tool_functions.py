@@ -6,7 +6,7 @@ structures (dicts/lists), not formatted strings. Catches issues like
 empty results, missing fields, or bad auth that MCP-level tests can't
 distinguish from "no results found".
 
-Run with:  pytest -m deterministic
+Run with:  pytest -m assertion_based
 """
 
 import asyncio

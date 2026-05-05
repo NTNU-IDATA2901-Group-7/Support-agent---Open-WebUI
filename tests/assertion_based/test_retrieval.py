@@ -1,5 +1,5 @@
 """
-Retrieval — deterministic key-based retrieval evaluation.
+Retrieval — assertion-based key-based retrieval evaluation.
 
 Cases are defined in cases/retrieval.yaml.
 

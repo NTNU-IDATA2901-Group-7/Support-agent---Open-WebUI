@@ -2,7 +2,7 @@
 Smoke test for agent_runner — verifies the Open WebUI chat API is reachable
 and returns a response.
 
-Run with:  pytest tests/deterministic/test_agent_runner_smoke.py -v
+Run with:  pytest tests/assertion_based/test_agent_runner_smoke.py -v
 """
 
 from tests.utils import agent_runner
