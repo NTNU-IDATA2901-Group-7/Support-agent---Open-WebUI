@@ -20,7 +20,7 @@ def _normalize_tool_name(name: str) -> str:
     cases can use the plain MCP tool names.
     """
     if name.startswith("tool_") and name.endswith("_post"):
-        return name[len("tool_"):-len("_post")]
+        return name[len("tool_") : -len("_post")]
     return name
 
 
@@ -36,10 +36,8 @@ def test_tool_selection(case: dict):
     expected_tools = set(case["expected_tools"])
 
     if expected_tools:
-        assert expected_tools.issubset(actual_tools), (
-            f"Expected tools {expected_tools} not found in {actual_tools}"
-        )
+        assert expected_tools.issubset(
+            actual_tools
+        ), f"Expected tools {expected_tools} not found in {actual_tools}"
     else:
-        assert len(actual_tools) == 0, (
-            f"Expected no tools, but got {actual_tools}"
-        )
+        assert len(actual_tools) == 0, f"Expected no tools, but got {actual_tools}"

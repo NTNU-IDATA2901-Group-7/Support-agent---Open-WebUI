@@ -71,6 +71,7 @@ def _get_knowledge_ids() -> list[str]:
 
     return _knowledge_ids
 
+
 SOCKET_TIMEOUT = int(os.environ.get("AGENT_RUNNER_TIMEOUT", "60"))
 
 
@@ -300,9 +301,7 @@ def run(query: str, include_files: bool = True) -> AgentResult:
                 "content management policy" in error_msg
                 or "content_filter" in error_msg
             ):
-                return AgentResult(
-                    answer=f"[Blocked by content filter] {error_msg}"
-                )
+                return AgentResult(answer=f"[Blocked by content filter] {error_msg}")
             resp.raise_for_status()
 
         resp.raise_for_status()

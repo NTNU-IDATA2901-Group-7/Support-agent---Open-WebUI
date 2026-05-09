@@ -71,7 +71,9 @@ def test_ticket_lookup_has_required_fields():
     ticket = result["ticket"]
     for field in ("key", "summary", "status", "priority", "assignee", "created"):
         assert field in ticket, f"Ticket missing '{field}' field"
-    assert ticket["key"] == ticket_key, f"Expected key '{ticket_key}', got '{ticket['key']}'"
+    assert (
+        ticket["key"] == ticket_key
+    ), f"Expected key '{ticket_key}', got '{ticket['key']}'"
 
 
 # ── Vector Search ────────────────────────────────────────────────
