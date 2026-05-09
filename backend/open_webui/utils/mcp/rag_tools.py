@@ -26,7 +26,8 @@ RAG_AZURE_OPENAI_VERSION = os.environ.get("RAG_AZURE_OPENAI_API_VERSION")
 RAG_AZURE_OPENAI_MODEL = os.environ.get("RAG_EMBEDDING_MODEL")
 RAG_AZURE_OPENAI_BASE_URL = os.environ.get("RAG_AZURE_OPENAI_BASE_URL")
 RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "10"))
-HYBRID_BM25_WEIGHT = float(os.environ.get("HYBRID_BM25_WEIGHT", "0.5"))
+RAG_TOP_K_RERANKER = int(os.environ.get("RAG_TOP_K_RERANKER", "3"))
+RAG_HYBRID_BM25_WEIGHT = float(os.environ.get("RAG_HYBRID_BM25_WEIGHT", "0.5"))
 RAG_SIMILARITY_CUTOFF = float(os.environ.get("RAG_SIMILARITY_CUTOFF", "0.5"))
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -93,6 +94,7 @@ async def _summarize_comments(ticket_key: str, summary: str, comments: list[dict
 async def search_vector_db_for_similar_jira_tickets(
     search_text: str,
     top_k: int = RAG_TOP_K,
+    top_k_reranker: int = RAG_TOP_K_RERANKER,
     similarity_cutoff: float = RAG_SIMILARITY_CUTOFF,
 ):
     """
@@ -101,14 +103,16 @@ async def search_vector_db_for_similar_jira_tickets(
 
     Args:
         search_text (str): Natural language query to search for.
-        top_k (int, optional): Maximum number of results to return. Defaults to 5.
+        top_k (int, optional): Initial BM25/vector candidate pool size before reranking.
+        top_k_reranker (int, optional): Number of results to keep after reranking.
         similarity_cutoff (float, optional): Minimum similarity score. Results below
-            this threshold are filtered out. Defaults to 0.5.
+            this threshold are filtered out.
 
     Returns:
         SearchResult with results above the cutoff, or None if no matches.
     """
     log.info(f"Performing hybrid search for: '{search_text}'")
+    log.info(f"RAG_HYBRID_BM25_WEIGHT={RAG_HYBRID_BM25_WEIGHT}, RAG_TOP_K={RAG_TOP_K}, RAG_TOP_K_RERANKER={RAG_TOP_K_RERANKER}, RAG_SIMILARITY_CUTOFF={RAG_SIMILARITY_CUTOFF}, RAG_RERANKING_MODEL={RAG_RERANKING_MODEL}")
     pgVectorClient = PgvectorClient()
     extra_params = {
         "key": RAG_AZURE_OPENAI_KEY,
@@ -141,9 +145,9 @@ async def search_vector_db_for_similar_jira_tickets(
         embedding_function=embedding_function,
         k=top_k,
         reranking_function=_get_reranking_function(),
-        k_reranker=top_k,
+        k_reranker=top_k_reranker,
         r=similarity_cutoff,
-        hybrid_bm25_weight=HYBRID_BM25_WEIGHT,
+        hybrid_bm25_weight=RAG_HYBRID_BM25_WEIGHT,
     )
 
     documents = result.get("documents", [[]])[0]
