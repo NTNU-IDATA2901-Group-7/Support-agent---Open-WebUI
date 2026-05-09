@@ -14,6 +14,7 @@ CASES = Path(__file__).parent / "cases"
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
+
 def load_yaml(filename: str) -> list[dict]:
     """Load a YAML file from the test/cases/ directory and return the list of test cases.
 
@@ -39,6 +40,7 @@ def teardown_agent_client():
     yield
     try:
         from tests.utils import agent_runner
+
         agent_runner.close()
     except ImportError:
         pass
@@ -46,19 +48,20 @@ def teardown_agent_client():
 
 # ── Markers ──────────────────────────────────────────────────────
 
+
 def pytest_collection_modifyitems(items):
     """Auto-tag tests with markers based on their directory.
 
     Tests under test/llm_judge/   get @pytest.mark.llm_judge
-    Tests under test/deterministic/ get @pytest.mark.deterministic
+    Tests under test/assertion_based/ get @pytest.mark.assertion_based
 
     This lets us run subsets selectively:
-        pytest -m deterministic   # fast smoke tests, no LLM calls
-        pytest -m llm_judge       # slow tests scored by DeepEval, costs API tokens
+        pytest -m assertion_based   # fast smoke tests, no LLM calls
+        pytest -m llm_judge         # slow tests scored by DeepEval, costs API tokens
     """
     for item in items:
         path = str(item.fspath)
         if "llm_judge" in path:
             item.add_marker(pytest.mark.llm_judge)
-        if "deterministic" in path:
-            item.add_marker(pytest.mark.deterministic)
+        if "assertion_based" in path:
+            item.add_marker(pytest.mark.assertion_based)

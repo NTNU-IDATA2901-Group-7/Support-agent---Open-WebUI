@@ -26,7 +26,7 @@ def format_similar_jira_ticket_search_results(result) -> str:
     """
     Formats Jira tickets search result into a structured text block for LLM context.
     Args:
-        search_result (SearchResult): Output from vector search.
+        result (SearchResult): Output from vector search, with comments in metadata.
     Returns:
         str: Formatted text
     """
@@ -42,12 +42,23 @@ def format_similar_jira_ticket_search_results(result) -> str:
 
     lines = [f"Top {num} most relevant Jira tickets:\n"]
     for i, (doc_id, doc_text, meta, score) in enumerate(rows, 1):
+        key = meta.get("key", doc_id)
+        doc_lines = doc_text.split("\n") if doc_text else []
+        summary = meta.get("summary") or (doc_lines[0] if doc_lines else "")
+        description = "\n".join(doc_lines[1:]).strip() if len(doc_lines) > 1 else ""
+
         lines.append(f"[{i}]")
-        lines.append(f"Key: {meta.get('key', doc_id)}")
-        lines.append(
-            f"Summary: {meta.get('summary', doc_text[:80] if doc_text else '')}"
-        )
-        lines.append(f"Similarity: {score:.2f}\n")
+        lines.append(f"Key: {key}")
+        lines.append(summary)
+        if description:
+            lines.append(description)
+        lines.append(f"Similarity: {score:.2f}")
+
+        solution = meta.get("solution")
+        if solution:
+            lines.append(f"Solution: {solution}")
+        lines.append("")
+
     str_result = "\n".join(lines)
     log.debug(str_result)
     return str_result
@@ -95,6 +106,11 @@ def format_jira_ticket_for_embedding(ticket: dict) -> str:
     lines = [
         f"Summary: {ticket.get('summary', '')}",
         f"Description: {ticket.get('description', '')}",
+        f"Key: {ticket.get('key', '')}",
+        f"Status: {ticket.get('status', '')}",
+        f"Type: {ticket.get('issue_type', '')}",
+        f"Priority: {ticket.get('priority', '')}",
+        f"Assignee: {ticket.get('assignee', '')}",
     ]
 
     return "\n".join(lines)

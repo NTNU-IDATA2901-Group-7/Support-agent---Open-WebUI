@@ -629,6 +629,10 @@ async def lifespan(app: FastAPI):
 
     asyncio.create_task(periodic_usage_pool_cleanup())
 
+    from open_webui.retrieval.jira_tickets import poll_jira_loop
+
+    asyncio.create_task(poll_jira_loop())
+
     if app.state.config.ENABLE_BASE_MODELS_CACHE:
         await get_all_models(
             Request(

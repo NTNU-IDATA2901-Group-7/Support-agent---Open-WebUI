@@ -138,3 +138,47 @@ async def get_jira_ticket_details_by_key(ticket_key: str) -> dict[str, dict[str,
             "created": fields.get("created") or "Unknown",
         }
     }
+
+
+async def get_jira_ticket_comments(ticket_key: str) -> dict:
+    """
+    Fetches the comments/solution thread for a specific Jira ticket.
+    Use this after retrieving similar tickets to read how the issue was resolved.
+
+    Args:
+        ticket_key (str): The Jira issue key (e.g., "SR-123").
+
+    Returns:
+        dict: A dictionary with:
+            - key (str): The ticket key.
+            - comments (list[dict]): List of comments, each with:
+                - author (str): Display name of the commenter.
+                - created (str): Timestamp of the comment.
+                - body (str): The comment text in markdown.
+
+    Raises:
+        RuntimeError: If the comments cannot be fetched.
+    """
+    log.info(f"Fetching comments for Jira ticket: {ticket_key}")
+    try:
+        data = await jira_api_get(
+            f"/issue/{ticket_key}/comment",
+            params={"expand": "renderedBody", "orderBy": "created"},
+        )
+    except Exception as e:
+        log.error(f"Failed to fetch comments for {ticket_key}: {e}")
+        raise RuntimeError(f"Failed to fetch comments for {ticket_key}: {e}")
+
+    comments = []
+    for comment in data.get("comments", []):
+        rendered_body = comment.get("renderedBody", "")
+        comments.append(
+            {
+                "author": (comment.get("author") or {}).get("displayName", "Unknown"),
+                "created": comment.get("created", ""),
+                "body": markdownify(rendered_body) if rendered_body else "",
+            }
+        )
+
+    log.info(f"Fetched {len(comments)} comments for {ticket_key}")
+    return {"key": ticket_key, "comments": comments}

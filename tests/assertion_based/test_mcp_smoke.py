@@ -1,10 +1,10 @@
 """
 Smoke tests for the MCP server and its tools.
 
-These are deterministic tests — no LLM involved, no DeepEval scoring.
+These are assertion-based tests — no LLM involved, no DeepEval scoring.
 They verify that the MCP server is reachable and each tool returns data.
 
-Run with:  pytest -m deterministic
+Run with:  pytest -m assertion_based
 
 Uses the MCP Python SDK client to talk to the server. The MCP protocol
 requires an initialization handshake before tools can be listed or called,

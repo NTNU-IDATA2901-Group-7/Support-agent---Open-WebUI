@@ -1,4 +1,4 @@
-"""HTTP endpoints for JIRA sync and create_issue"""
+"""HTTP endpoints for JIRA operations"""
 
 import os
 import json
@@ -8,25 +8,19 @@ from httpx import AsyncClient
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from open_webui.retrieval.jira_tickets import fetch_jira_tickets
+from open_webui.retrieval.jira_tickets import sync_jira_tickets, JIRA_LAST_SYNCED_AT
 from open_webui.retrieval.vector.factory import VECTOR_DB_CLIENT
 from open_webui.retrieval.vector.dbs.pgvector import PgvectorClient
-from open_webui.retrieval.vector.main import VectorItem
 
 from open_webui.models.files import Files
 from open_webui.storage.provider import Storage
 from open_webui.utils.auth import get_admin_user, get_verified_user
 
-# from open_webui.utils.jira.helpers import embed_jira_tickets
-from open_webui.utils.jira.formatters import (
-    description_text_to_adf,
-    format_jira_ticket_for_embedding,
-)
-from open_webui.retrieval.utils import generate_embeddings
-from open_webui.models.oauth_sessions import OAuthSessions
+from open_webui.utils.jira.formatters import description_text_to_adf
+from open_webui.utils.jira.oauth import get_jira_session, JIRA_OAUTH_BASE_URL
+from open_webui.config import PersistentConfig
 
-from datetime import datetime, timedelta
-import aiohttp
+from datetime import datetime
 
 
 # =================================================================================
@@ -40,117 +34,12 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_API_BASE_URL = os.environ.get("OPENAI_API_BASE_URL")
 OPENAI_API_VERSION = os.environ.get("RAG_AZURE_OPENAI_API_VERSION")
 
-RAG_AZURE_OPENAI_KEY = os.environ.get("RAG_AZURE_OPENAI_API_KEY")
-RAG_AZURE_OPENAI_VERSION = os.environ.get("RAG_AZURE_OPENAI_API_VERSION")
-RAG_AZURE_OPENAI_MODEL = os.environ.get("RAG_EMBEDDING_MODEL")
-RAG_AZURE_OPENAI_BASE_URL = os.environ.get("RAG_AZURE_OPENAI_BASE_URL")
-
-JIRA_CLOUD_ID_ENV = os.environ.get("JIRA_CLOUD_ID")
-JIRA_CREATE_ISSUE_PROJECT_KEY = os.environ.get("JIRA_CREATE_ISSUE_PROJECT_KEY", "TESTSUPP")
+JIRA_CREATE_ISSUE_PROJECT_KEY = os.environ.get(
+    "JIRA_CREATE_ISSUE_PROJECT_KEY", "TESTSUPP"
+)
 JIRA_COLLECTION = "jira_support_tickets"
-JIRA_OAUTH_PROVIDER = "atlassian"
-ATLASSIAN_TOKEN_URL = "https://auth.atlassian.com/oauth/token"
-ATLASSIAN_CLIENT_ID = os.environ.get("ATLASSIAN_CLIENT_ID", "")
-ATLASSIAN_CLIENT_SECRET = os.environ.get("ATLASSIAN_CLIENT_SECRET", "")
 
-
-async def _refresh_jira_token(session) -> dict | None:
-    """Refresh an expired Atlassian OAuth token, preserving custom metadata."""
-    token_data = session.token
-    refresh_token = token_data.get("refresh_token")
-    if not refresh_token:
-        log.warning(f"No refresh token for JIRA session {session.id}")
-        return None
-
-    refresh_data = {
-        "grant_type": "refresh_token",
-        "refresh_token": refresh_token,
-        "client_id": ATLASSIAN_CLIENT_ID,
-        "client_secret": ATLASSIAN_CLIENT_SECRET,
-    }
-    try:
-        async with aiohttp.ClientSession(trust_env=True) as http:
-            async with http.post(
-                ATLASSIAN_TOKEN_URL,
-                json=refresh_data,
-            ) as resp:
-                if resp.status != 200:
-                    error_text = await resp.text()
-                    log.error(
-                        f"JIRA token refresh failed: {resp.status} - {error_text}"
-                    )
-                    return None
-                new_token = await resp.json()
-    except Exception as e:
-        log.error(f"JIRA token refresh exception: {e}")
-        return None
-
-    # Preserve refresh_token if the provider didn't return a new one
-    if "refresh_token" not in new_token:
-        new_token["refresh_token"] = refresh_token
-
-    # Preserve custom metadata stored during initial OAuth
-    for key in ("cloud_id", "atlassian_account_id"):
-        if key not in new_token and key in token_data:
-            new_token[key] = token_data[key]
-
-    new_token["issued_at"] = int(datetime.now().timestamp())
-    if "expires_in" in new_token and "expires_at" not in new_token:
-        new_token["expires_at"] = int(datetime.now().timestamp()) + int(
-            new_token["expires_in"]
-        )
-
-    updated = OAuthSessions.update_session_by_id(session.id, new_token)
-    if updated:
-        log.info(f"Refreshed JIRA token for session {session.id}")
-        return updated.token
-    return None
-
-
-async def _get_jira_session(user_id: str):
-    """
-    Get a valid Atlassian OAuthSession for the user,
-    refreshing automatically if close to expiry.
-
-    Returns the OAuthSessionModel or None.
-    """
-    session = OAuthSessions.get_session_by_provider_and_user_id(
-        JIRA_OAUTH_PROVIDER, user_id
-    )
-    if not session:
-        log.warning(f"No JIRA OAuth session for user {user_id}")
-        return None
-
-    # Refresh if expiring within 5 minutes
-    if datetime.now() + timedelta(minutes=5) >= datetime.fromtimestamp(
-        session.expires_at
-    ):
-        log.debug(f"JIRA token near expiry for user {user_id}, refreshing")
-        refreshed = await _refresh_jira_token(session)
-        if refreshed:
-            # Re-fetch the updated session
-            session = OAuthSessions.get_session_by_provider_and_user_id(
-                JIRA_OAUTH_PROVIDER, user_id
-            )
-            if session:
-                return session
-        # Refresh failed – delete stale session
-        OAuthSessions.delete_session_by_id(session.id)
-        log.warning(f"JIRA token refresh failed for user {user_id}, session deleted")
-        return None
-
-    return session
-
-
-def _get_jira_base_url(session) -> str:
-    """Build the JIRA API base URL from the session's cloud_id or env fallback."""
-    cloud_id = session.token.get("cloud_id") or JIRA_CLOUD_ID_ENV
-    if not cloud_id:
-        raise HTTPException(
-            status_code=500,
-            detail="No Jira cloud_id found. Please reconnect your Atlassian account.",
-        )
-    return f"https://api.atlassian.com/ex/jira/{cloud_id}"
+JIRA_LAST_WIPED_AT = PersistentConfig("JIRA_LAST_WIPED_AT", "jira.last_wiped_at", "")
 
 
 # =================================================================================
@@ -231,7 +120,6 @@ async def autofill_jira(
 # =================================================================================
 
 
-# TODO: Test, and add documentation and detailed logging
 @router.post("/sync")
 async def sync_jira(
     request: Request,
@@ -239,78 +127,39 @@ async def sync_jira(
 ):
     log.debug(f"User {user.id} requested syncing of JIRA tickets")
     try:
-        tickets = await fetch_jira_tickets()
-        fetched_ids = {t["id"] for t in tickets}
-
-        # Check which tickets are already in the vector DB
-        pgVectorClient = PgvectorClient()
-        existing = pgVectorClient.get(collection_name=JIRA_COLLECTION)
-        existing_ids = set(existing.ids[0]) if existing else set()
-
-        # Only embed tickets that aren't already in the DB
-        new_tickets = [t for t in tickets if t["id"] not in existing_ids]
-
-        # Delete stale tickets that are no longer in the fetched batch
-        stale_ids = list(existing_ids - fetched_ids)
-        if stale_ids:
-            pgVectorClient.delete(
-                collection_name=JIRA_COLLECTION, ids=stale_ids
-            )
-            log.info(f"Deleted {len(stale_ids)} stale tickets from vector DB")
-
-        if not new_tickets:
-            log.info("No new tickets to embed, vector DB is up to date")
-            return
-
-        texts = [format_jira_ticket_for_embedding(t) for t in new_tickets]
-        metadata_list = [
-            {
-                "id": t["id"],
-                "key": t["key"],
-                "status": t["status"],
-                "created": t["created"],
-            }
-            for t in new_tickets
-        ]
-
-        extra_params = {
-            "key": RAG_AZURE_OPENAI_KEY,
-            "azure_api_version": RAG_AZURE_OPENAI_VERSION,
-            "url": RAG_AZURE_OPENAI_BASE_URL,
-        }
-        embeddings = await generate_embeddings(
-            engine="azure_openai",
-            model=RAG_AZURE_OPENAI_MODEL,
-            text=texts,
-            **extra_params,
-        )
-
-        vector_items = [
-            {
-                "id": meta["id"],
-                "text": text,
-                "vector": emb,
-                "metadata": meta,
-            }
-            for emb, text, meta in zip(embeddings, texts, metadata_list)
-        ]
-
-        pgVectorClient.upsert(collection_name=JIRA_COLLECTION, items=vector_items)
-        log.info(
-            f"Synced JIRA tickets: {len(new_tickets)} embedded, "
-            f"{len(stale_ids)} stale deleted, "
-            f"{len(fetched_ids) - len(new_tickets)} unchanged"
-        )
+        await sync_jira_tickets()
     except Exception as e:
         log.exception(f"JIRA sync failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# TODO: Add when it was last synced - timestamp needs to be passed when upserting collection
+@router.delete("/wipe")
+async def wipe_jira_collection(user=Depends(get_admin_user)):
+    """Delete all Jira tickets from the vector DB so the next sync re-embeds everything."""
+    pgVectorClient = PgvectorClient()
+    pgVectorClient.delete_collection(JIRA_COLLECTION)
+
+    JIRA_LAST_WIPED_AT.value = datetime.now().isoformat()
+    JIRA_LAST_WIPED_AT.save()
+
+    log.info(f"Wiped collection '{JIRA_COLLECTION}'")
+    return {"status": "ok", "collection": JIRA_COLLECTION}
+
+
 @router.get("/status")
 async def jira_status(user=Depends(get_verified_user)):
     has = VECTOR_DB_CLIENT.has_collection(JIRA_COLLECTION)
-    return {"synced": has, "collection": JIRA_COLLECTION}
+    last_synced = JIRA_LAST_SYNCED_AT.value or None
+    last_wiped = JIRA_LAST_WIPED_AT.value or None
+    # If wiped after the last sync, consider it not synced
+    if last_wiped and (not last_synced or last_wiped > last_synced):
+        has = False
+    return {
+        "synced": has,
+        "collection": JIRA_COLLECTION,
+        "last_synced_at": last_synced,
+        "last_wiped_at": last_wiped,
+    }
 
 
 # =================================================================================
@@ -324,13 +173,12 @@ async def get_project_meta(
     user=Depends(get_verified_user),
 ) -> dict:
     """Return available issue types for a JIRA project."""
-    jira_session = await _get_jira_session(user.id)
+    jira_session = await get_jira_session(user.id)
     if not jira_session:
         raise HTTPException(status_code=401, detail="No JIRA OAuth session found.")
 
     oauth_access_token = jira_session.token.get("access_token")
-    jira_base_url = _get_jira_base_url(jira_session)
-    url = f"{jira_base_url}/rest/api/3/project/{project_key}"
+    url = f"{JIRA_OAUTH_BASE_URL}/project/{project_key}"
 
     headers = {
         "Authorization": f"Bearer {oauth_access_token}",
@@ -403,7 +251,7 @@ async def create_issue(
         f"User {user.id} requested Jira issue creation in {project_key}, summary: {form.summary}"
     )
 
-    jira_session = await _get_jira_session(user.id)
+    jira_session = await get_jira_session(user.id)
     if not jira_session:
         raise HTTPException(
             status_code=401,
@@ -411,8 +259,7 @@ async def create_issue(
         )
 
     oauth_access_token = jira_session.token.get("access_token")
-    jira_base_url = _get_jira_base_url(jira_session)
-    url = f"{jira_base_url}/rest/api/3/issue"
+    url = f"{JIRA_OAUTH_BASE_URL}/issue"
 
     # 2. Build headers
     headers = {
@@ -466,50 +313,9 @@ async def create_issue(
         raise HTTPException(status_code=502, detail=str(e))
 
     # 5. Attach files (separate API calls)
-    attachment_results = {"attached": [], "failed": []}
-
-    if form.file_ids:
-        attach_url = f"{jira_base_url}/rest/api/3/issue/{issue_key}/attachments"
-        attach_headers = {
-            "Authorization": f"Bearer {oauth_access_token}",
-            "X-Atlassian-Token": "no-check",
-        }
-
-        for file_id in form.file_ids:
-            try:
-                file_record = Files.get_file_by_id(file_id)
-                if not file_record:
-                    raise RuntimeError("File record not found")
-
-                local_path = Storage.get_file(file_record.path)
-                filename = (file_record.meta or {}).get("name", file_record.filename)
-
-                with open(local_path, "rb") as f:
-                    file_bytes = f.read()
-
-                async with AsyncClient() as client:
-                    resp = await client.post(
-                        attach_url,
-                        headers=attach_headers,
-                        files={"file": (filename, file_bytes)},
-                        timeout=60,
-                    )
-
-                if resp.status_code >= 400:
-                    raise RuntimeError(
-                        f"Jira attachment API error {resp.status_code}: {resp.text}"
-                    )
-
-                attachment_results["attached"].append(
-                    {"file_id": file_id, "filename": filename}
-                )
-                log.info(f"Attached {filename} to {issue_key}")
-
-            except Exception as e:
-                log.warning(f"Failed to attach file {file_id} to {issue_key}: {e}")
-                attachment_results["failed"].append(
-                    {"file_id": file_id, "error": str(e)}
-                )
+    attachment_results = await _attach_files(
+        issue_key, form.file_ids, oauth_access_token
+    )
 
     if attachment_results["failed"]:
         raise HTTPException(
@@ -523,3 +329,47 @@ async def create_issue(
         )
 
     return result
+
+
+async def _attach_files(issue_key: str, file_ids: list[str], access_token: str) -> dict:
+    """Attach files to a Jira issue. Returns dict with 'attached' and 'failed' lists."""
+    url = f"{JIRA_OAUTH_BASE_URL}/issue/{issue_key}/attachments"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "X-Atlassian-Token": "no-check",
+    }
+    results = {"attached": [], "failed": []}
+
+    for file_id in file_ids:
+        try:
+            file_record = Files.get_file_by_id(file_id)
+            if not file_record:
+                raise RuntimeError("File record not found")
+
+            local_path = Storage.get_file(file_record.path)
+            filename = (file_record.meta or {}).get("name", file_record.filename)
+
+            with open(local_path, "rb") as f:
+                file_bytes = f.read()
+
+            async with AsyncClient() as client:
+                resp = await client.post(
+                    url,
+                    headers=headers,
+                    files={"file": (filename, file_bytes)},
+                    timeout=60,
+                )
+
+            if resp.status_code >= 400:
+                raise RuntimeError(
+                    f"Jira attachment API error {resp.status_code}: {resp.text}"
+                )
+
+            results["attached"].append({"file_id": file_id, "filename": filename})
+            log.info(f"Attached {filename} to {issue_key}")
+
+        except Exception as e:
+            log.warning(f"Failed to attach file {file_id} to {issue_key}: {e}")
+            results["failed"].append({"file_id": file_id, "error": str(e)})
+
+    return results

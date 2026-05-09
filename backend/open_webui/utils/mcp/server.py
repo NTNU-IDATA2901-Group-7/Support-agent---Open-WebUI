@@ -19,6 +19,7 @@ from mcp.server.fastmcp import FastMCP
 # Import tool implementations
 from open_webui.utils.mcp.jira_tools import (
     get_jira_ticket_details_by_key,
+    get_jira_ticket_comments,
     search_jira_tickets_by_jql,
 )
 from open_webui.utils.mcp.rag_tools import (
@@ -41,10 +42,6 @@ log = logging.getLogger(__name__)
 
 MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(os.environ.get("MCP_PORT", "8000"))
-VECTOR_SEARCH_TOP_K = int(os.environ.get("VECTOR_SEARCH_TOP_K", "5"))
-VECTOR_SEARCH_SIMILARITY_CUTOFF = float(
-    os.environ.get("VECTOR_SEARCH_SIMILARITY_CUTOFF", "0.5")
-)
 
 server = FastMCP(
     "support-agent-tools",
@@ -103,6 +100,32 @@ async def get_jira_ticket_details_by_key_tool(ticket_key: str) -> str:
     return format_jira_ticket_details(result)
 
 
+@server.tool()
+async def get_jira_ticket_comments_tool(ticket_key: str) -> str:
+    """
+    Fetch the comments/solution thread for a Jira ticket.
+
+    When to use: After finding a relevant ticket via search, use this to read how
+    the issue was actually resolved. The comments contain the solution and discussion.
+    Input: Jira ticket key like "SR-123"
+    Output: List of comments with author, timestamp, and content.
+
+    :param ticket_key: Jira ticket key (e.g., SR-123)
+    """
+    log.info(f"MCP Tool called: get_jira_ticket_comments")
+    result = await get_jira_ticket_comments(ticket_key=ticket_key)
+    comments = result.get("comments", [])
+    if not comments:
+        return f"No comments found for {ticket_key}."
+
+    lines = [f"Comments for {ticket_key} ({len(comments)} comments):\n"]
+    for i, comment in enumerate(comments, 1):
+        lines.append(f"[{i}] {comment['author']} ({comment['created']}):")
+        lines.append(comment["body"])
+        lines.append("")
+    return "\n".join(lines)
+
+
 # ==================== RAG TOOLS ====================
 
 
@@ -114,18 +137,17 @@ async def search_vector_db_for_similar_jira_tickets_tool(
     Search for Jira tickets semantically similar to a natural language query.
 
     When to use: User asks about existing tickets, bug reports, or similar issues.
-    Input: Natural language description (e.g., "login button not working", "payment processing errors")
     Output: List of similar tickets with keys, summaries, status, and similarity scores.
 
     Retrieval parameters are fixed server-side to keep RAG evaluation stable.
 
-    :param search_text: Natural language query describing what tickets to find
+    :param search_text: Concise summary of the user's problem, in Norwegian.
+        Always Norwegian, regardless of the user's language — tickets are
+        stored in Norwegian.
     """
     log.info(f"MCP Tool called: search_vector_db_for_similar_jira_tickets")
     result = await search_vector_db_for_similar_jira_tickets(
         search_text=search_text,
-        top_k=VECTOR_SEARCH_TOP_K,
-        similarity_cutoff=VECTOR_SEARCH_SIMILARITY_CUTOFF,
     )
     if result is None:
         return "No similar tickets found."

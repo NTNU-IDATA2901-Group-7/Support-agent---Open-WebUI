@@ -1,5 +1,5 @@
 """
-Retrieval — deterministic key-based retrieval evaluation.
+Retrieval — assertion-based key-based retrieval evaluation.
 
 Cases are defined in cases/retrieval.yaml.
 
@@ -62,6 +62,7 @@ def _extract_search_queries(tool_calls: list[dict]) -> list[str]:
         elif isinstance(args, str):
             try:
                 import json
+
                 parsed = json.loads(args)
                 if "search_text" in parsed:
                     queries.append(parsed["search_text"])
@@ -72,7 +73,7 @@ def _extract_search_queries(tool_calls: list[dict]) -> list[str]:
 
 def _normalize_tool_name(name: str) -> str:
     if name.startswith("tool_") and name.endswith("_post"):
-        return name[len("tool_"):-len("_post")]
+        return name[len("tool_") : -len("_post")]
     return name
 
 
@@ -147,9 +148,9 @@ def test_retrieval(case: dict):
     retrieved_keys = _extract_retrieved_keys(result.tool_calls)
     expected_keys = set(case["expected_keys"])
 
-    assert EXPECTED_RETRIEVAL_TOOL in tool_names, (
-        f"Expected retrieval tool '{EXPECTED_RETRIEVAL_TOOL}' not found in {tool_names}"
-    )
+    assert (
+        EXPECTED_RETRIEVAL_TOOL in tool_names
+    ), f"Expected retrieval tool '{EXPECTED_RETRIEVAL_TOOL}' not found in {tool_names}"
 
     actual_precision = _precision_at_k(retrieved_keys, expected_keys, RETRIEVAL_K)
     actual_recall = _recall_at_k(retrieved_keys, expected_keys, RETRIEVAL_K)
