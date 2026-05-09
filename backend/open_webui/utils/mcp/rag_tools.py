@@ -36,7 +36,9 @@ OPENAI_API_VERSION = os.environ.get("RAG_AZURE_OPENAI_API_VERSION")
 
 JIRA_COLLECTION = "jira_support_tickets"
 
-RAG_RERANKING_MODEL = os.environ.get("RAG_RERANKING_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+RAG_RERANKING_MODEL = os.environ.get(
+    "RAG_RERANKING_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"
+)
 
 _reranker = None
 
@@ -56,7 +58,9 @@ def _get_reranking_function():
     return _reranker
 
 
-async def _summarize_comments(ticket_key: str, summary: str, comments: list[dict]) -> str:
+async def _summarize_comments(
+    ticket_key: str, summary: str, comments: list[dict]
+) -> str:
     """Use the LLM to extract a concise solution summary from a ticket's comment thread."""
     comment_text = "\n".join(
         f"{c['author']}: {c['body']}" for c in comments if c.get("body")
@@ -88,6 +92,7 @@ async def _summarize_comments(ticket_key: str, summary: str, comments: list[dict
         log.warning(f"Failed to summarize comments for {ticket_key}: {e}")
         return "Could not summarize solution."
 
+
 # ==================== MCP TOOLS ====================
 
 
@@ -112,7 +117,9 @@ async def search_vector_db_for_similar_jira_tickets(
         SearchResult with results above the cutoff, or None if no matches.
     """
     log.info(f"Performing hybrid search for: '{search_text}'")
-    log.info(f"RAG_HYBRID_BM25_WEIGHT={RAG_HYBRID_BM25_WEIGHT}, RAG_TOP_K={RAG_TOP_K}, RAG_TOP_K_RERANKER={RAG_TOP_K_RERANKER}, RAG_SIMILARITY_CUTOFF={RAG_SIMILARITY_CUTOFF}, RAG_RERANKING_MODEL={RAG_RERANKING_MODEL}")
+    log.info(
+        f"RAG_HYBRID_BM25_WEIGHT={RAG_HYBRID_BM25_WEIGHT}, RAG_TOP_K={RAG_TOP_K}, RAG_TOP_K_RERANKER={RAG_TOP_K_RERANKER}, RAG_SIMILARITY_CUTOFF={RAG_SIMILARITY_CUTOFF}, RAG_RERANKING_MODEL={RAG_RERANKING_MODEL}"
+    )
     pgVectorClient = PgvectorClient()
     extra_params = {
         "key": RAG_AZURE_OPENAI_KEY,
@@ -179,7 +186,9 @@ async def search_vector_db_for_similar_jira_tickets(
                 f"/issue/{key}/comment", params={"maxResults": 0}
             )
             current_count = count_data.get("total", 0)  # default 0 if field missing
-            cached_count = meta.get("comment_count", -1)  # -1 = no cache yet (avoids false hit on 0-comment tickets)
+            cached_count = meta.get(
+                "comment_count", -1
+            )  # -1 = no cache yet (avoids false hit on 0-comment tickets)
 
             # Cache hit: solution exists and comment count unchanged
             if meta.get("solution") and current_count == cached_count:
@@ -197,9 +206,11 @@ async def search_vector_db_for_similar_jira_tickets(
             meta["comment_count"] = current_count
 
             # Write back to DB so next retrieval is instant
-            chunk = pgVectorClient.session.query(DocumentChunk).filter(
-                DocumentChunk.id == ticket_id
-            ).first()
+            chunk = (
+                pgVectorClient.session.query(DocumentChunk)
+                .filter(DocumentChunk.id == ticket_id)
+                .first()
+            )
             if chunk:
                 chunk.vmetadata["solution"] = meta["solution"]
                 chunk.vmetadata["comment_count"] = current_count
@@ -208,7 +219,12 @@ async def search_vector_db_for_similar_jira_tickets(
         except Exception as e:
             log.warning(f"Failed to fetch/summarize comments for {key}: {e}")
 
-    await asyncio.gather(*[_fetch_and_summarize(meta, doc_text) for meta, doc_text in zip(metadatas, documents)])
+    await asyncio.gather(
+        *[
+            _fetch_and_summarize(meta, doc_text)
+            for meta, doc_text in zip(metadatas, documents)
+        ]
+    )
 
     search_result = SearchResult(
         ids=[ids],

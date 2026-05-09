@@ -34,12 +34,12 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_API_BASE_URL = os.environ.get("OPENAI_API_BASE_URL")
 OPENAI_API_VERSION = os.environ.get("RAG_AZURE_OPENAI_API_VERSION")
 
-JIRA_CREATE_ISSUE_PROJECT_KEY = os.environ.get("JIRA_CREATE_ISSUE_PROJECT_KEY", "TESTSUPP")
+JIRA_CREATE_ISSUE_PROJECT_KEY = os.environ.get(
+    "JIRA_CREATE_ISSUE_PROJECT_KEY", "TESTSUPP"
+)
 JIRA_COLLECTION = "jira_support_tickets"
 
-JIRA_LAST_WIPED_AT = PersistentConfig(
-    "JIRA_LAST_WIPED_AT", "jira.last_wiped_at", ""
-)
+JIRA_LAST_WIPED_AT = PersistentConfig("JIRA_LAST_WIPED_AT", "jira.last_wiped_at", "")
 
 
 # =================================================================================
@@ -313,7 +313,9 @@ async def create_issue(
         raise HTTPException(status_code=502, detail=str(e))
 
     # 5. Attach files (separate API calls)
-    attachment_results = await _attach_files(issue_key, form.file_ids, oauth_access_token)
+    attachment_results = await _attach_files(
+        issue_key, form.file_ids, oauth_access_token
+    )
 
     if attachment_results["failed"]:
         raise HTTPException(

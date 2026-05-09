@@ -32,9 +32,7 @@ RAG_AZURE_OPENAI_BASE_URL = os.environ.get("RAG_AZURE_OPENAI_BASE_URL")
 JIRA_COLLECTION = "jira_support_tickets"
 JIRA_POLL_INTERVAL_SECONDS = 86400
 
-JIRA_LAST_SYNCED_AT = PersistentConfig(
-    "JIRA_LAST_SYNCED_AT", "jira.last_synced_at", ""
-)
+JIRA_LAST_SYNCED_AT = PersistentConfig("JIRA_LAST_SYNCED_AT", "jira.last_synced_at", "")
 
 # =================================================================================
 # FETCH JIRA TICKETS
@@ -91,7 +89,9 @@ async def fetch_jira_tickets() -> list[dict]:
                     "status": fields["status"]["name"],
                     "summary": fields["summary"],
                     "description": (
-                        markdownify(rendered_description) if rendered_description else ""
+                        markdownify(rendered_description)
+                        if rendered_description
+                        else ""
                     ),
                     "issue_type": (fields.get("issuetype") or {}).get("name", ""),
                     "priority": (fields.get("priority") or {}).get("name", ""),
@@ -125,13 +125,20 @@ async def sync_jira_tickets():
     existing_docs = {}
     if existing and existing.ids[0]:
         for i, eid in enumerate(existing.ids[0]):
-            existing_meta[eid] = existing.metadatas[0][i] if existing.metadatas[0] else {}
-            existing_docs[eid] = existing.documents[0][i] if existing.documents[0] else ""
+            existing_meta[eid] = (
+                existing.metadatas[0][i] if existing.metadatas[0] else {}
+            )
+            existing_docs[eid] = (
+                existing.documents[0][i] if existing.documents[0] else ""
+            )
 
     # Determine which tickets need (re-)embedding
     tickets_to_upsert = []
     for t in tickets:
-        if t["id"] not in existing_docs or format_jira_ticket_for_embedding(t) != existing_docs[t["id"]]:
+        if (
+            t["id"] not in existing_docs
+            or format_jira_ticket_for_embedding(t) != existing_docs[t["id"]]
+        ):
             tickets_to_upsert.append(t)
 
     # Reconcile: remove tickets that no longer exist in Jira (deleted or moved out of scope)
