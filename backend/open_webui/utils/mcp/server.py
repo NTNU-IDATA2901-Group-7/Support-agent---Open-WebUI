@@ -42,10 +42,6 @@ log = logging.getLogger(__name__)
 
 MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(os.environ.get("MCP_PORT", "8000"))
-VECTOR_SEARCH_TOP_K = int(os.environ.get("VECTOR_SEARCH_TOP_K", "5"))
-VECTOR_SEARCH_SIMILARITY_CUTOFF = float(
-    os.environ.get("VECTOR_SEARCH_SIMILARITY_CUTOFF", "0.5")
-)
 
 server = FastMCP(
     "support-agent-tools",
@@ -141,18 +137,17 @@ async def search_vector_db_for_similar_jira_tickets_tool(
     Search for Jira tickets semantically similar to a natural language query.
 
     When to use: User asks about existing tickets, bug reports, or similar issues.
-    Input: Natural language description (e.g., "login button not working", "payment processing errors")
     Output: List of similar tickets with keys, summaries, status, and similarity scores.
 
     Retrieval parameters are fixed server-side to keep RAG evaluation stable.
 
-    :param search_text: Natural language query describing what tickets to find
+    :param search_text: Concise summary of the user's problem, in Norwegian.
+        Always Norwegian, regardless of the user's language — tickets are
+        stored in Norwegian.
     """
     log.info(f"MCP Tool called: search_vector_db_for_similar_jira_tickets")
     result = await search_vector_db_for_similar_jira_tickets(
         search_text=search_text,
-        top_k=VECTOR_SEARCH_TOP_K,
-        similarity_cutoff=VECTOR_SEARCH_SIMILARITY_CUTOFF,
     )
     if result is None:
         return "No similar tickets found."
