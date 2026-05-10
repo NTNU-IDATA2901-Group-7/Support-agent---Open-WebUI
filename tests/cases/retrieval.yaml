@@ -3,156 +3,634 @@
 # Each case sends a query through the full agent pipeline and checks that
 # the vector search tool returns results containing the expected ticket keys.
 #
-# Ticket pool: docs/jira-tickets-pool.md (100 most recent closed tickets)
+# Ticket pool: docs/jira_tickets_list.md (300 most recently updated tickets,
+# both open and closed, fetched via paginated /search/jql).
 #
 # expected_keys: tickets from the pool that are clearly relevant to the query.
-# The vector search returns top-5 by cosine similarity, so expected_keys
-# should be the tickets most semantically similar to the input query.
+# The vector search returns top-5 by hybrid (BM25 + vector) similarity, then
+# is reranked by a cross-encoder. The benchmark uses Precision@5, R_cap@5,
+# and NDCG@5 — see test_retrieval.py for thresholds.
+#
+# Case selection: 24 cases spanning 18 distinct support domains. Validated
+# against the full 300-ticket pool — narrow single-ticket cases and
+# overlapping variants were dropped, expected_keys expanded for clusters
+# where additional pool tickets clearly belong.
 
 # ── Missing packing slip reference (pakkseddelref) ─────────────
-# Large cluster: SR-15404, SR-15387, SR-15378, SR-15334, SR-15329,
-# SR-15310, SR-15305, SR-15290, SR-15267, SR-15214, SR-15182,
-# SR-15183, SR-15160, SR-15126, SR-15101, SR-15089, SR-14960,
-# SR-15270, SR-15252, SR-15312
 
-- id: missing_packing_slip_ref_tm
-  input: "Butikk mangler pakkseddelreferanse på T&M levering"
+- id: missing_packing_slip_tm # passes
+  # Query about T&M (tobakk/medisin) deliveries missing packing slip ref
+  # Pool: SR-15404 (Hell T&M), SR-15310 (OTG T&M), SR-15387 (Rissa tobakk),
+  #       SR-15521 (Paul Nyrgaard/Lyngåsen tobakk), SR-15528 (Tp engros tobakk),
+  #       SR-15511 (klar til fakturering, mangler pakkseddelref),
+  #       SR-15575 (Crossdock-ordrer T&M Kroppanmarka mangler utgående pakkseddel)
+  input: "Pakkseddelreferanse mangler på T&M-levering"
   expected_keys:
-    - SR-15404
-    - SR-15334
     - SR-15310
-    - SR-15214
-    - SR-15182
-    - SR-15305
-
-- id: missing_packing_slip_rdi_cd
-  input: "Flere ordrer mangler pakkseddel på RDI CD levering fra Bergen"
-  expected_keys:
-    - SR-15270
-    - SR-15252
-    - SR-15312
-    - SR-15305
-
-- id: missing_packing_slip_general
-  input: "Kunde mangler pakkseddel på levering, ordre ikke fakturert"
-  expected_keys:
-    - SR-15404
     - SR-15387
-    - SR-15378
-    - SR-15267
-    - SR-15160
-    - SR-15089
-    - SR-15183
-    - SR-14960
-    - SR-15126
+    - SR-15521
+    - SR-15528
+    - SR-15511
+    - SR-15575
+
+- id: missing_packing_slip_general # fails badly
+  # Query about missing packing slip blocking invoicing — tests whether the
+  # retriever surfaces tickets that document the full pakkseddel→fakturering
+  # incident chain rather than tickets matching only one symptom.
+  # Pool: SR-15575 (Crossdock mangler pakkseddel og fakturering),
+  #       SR-15410 (Fanatorget uten pakkseddel, ikke fakturert),
+  #       SR-15527 (klar til fakturering, ikke generert pakkseddel ref),
+  #       SR-15498 (Tasta ikke fakturert, ikke generert pakkseddelref)
+  input: "Mangler pakkseddel på levering, ordre ikke fakturert"
+  expected_keys:
+    - SR-15575
+    - SR-15410
+    - SR-15527
+    - SR-15498
 
 # ── Missing goods receipt (varemottak) ──────────────────────────
-# Cluster: SR-15394, SR-15390, SR-15336, SR-15354, SR-15335,
-# SR-15311, SR-15308, SR-14443, SR-14070, SR-13580, SR-13794
 
-- id: missing_goods_receipt_tobacco
-  input: "Flere butikker mangler varemottak på tobakk og medisin"
+- id: missing_goods_receipt_tobacco # fails
+  # Query about tobacco/medicine deliveries missing goods receipt
+  # Pool: SR-15308 (Heimdal mangler VM tobakk/medisin),
+  #       SR-15587 (Manglende VM Tobakk/medisin),
+  #       SR-15581 (Varemottak mangler på Tobakk/Medisin)
+  input: "Varemottak mangler på tobakk- og medisinleveranser til flere butikker"
   expected_keys:
     - SR-15308
-    - SR-15311
-    - SR-15335
-    - SR-15336
-    - SR-15354
+    - SR-15587
+    - SR-15581
 
-- id: missing_goods_receipt_general
-  input: "Butikk melder om manglende varemottak på dagens levering"
+- id: missing_goods_receipt_general # passes
+  # Query about stores reporting missing goods receipt on delivery
+  # Pool: SR-15394 (Norheim), SR-15498 (Tasta), SR-15499 (Bygnes),
+  #       SR-15397 (Vestnes ikke fått VM), SR-15514 (rute 41115),
+  #       SR-15517 (Stokmarknes), SR-15546 (Manglende VM på fakturerte butikker),
+  #       SR-15440 (Tananger reservert, butikk melder manglende VM),
+  #       SR-15581 (Varemottak mangler på Tobakk/Medisin),
+  #       SR-15587 (Manglende VM Tobakk/medisin)
+  input: "Varemottak mangler på dagens levering"
   expected_keys:
     - SR-15394
-    - SR-15390
-    - SR-15335
-    - SR-14443
-    - SR-14070
-    - SR-13580
-    - SR-13794
+    - SR-15498
+    - SR-15499
+    - SR-15397
+    - SR-15514
+    - SR-15517
+    - SR-15546
+    - SR-15440
+    - SR-15581
+    - SR-15587
 
-# ── Orders stuck in wrong status ───────────────────────────────
-# Cluster: SR-15350, SR-15430, SR-15396, SR-15391, SR-14709,
-# SR-14573, SR-14252, SR-14132, SR-14099, SR-14081, SR-14005,
-# SR-13510, SR-13772, SR-13618, SR-13554
+# ── Orders in wrong status ─────────────────────────────────────
 
 - id: orders_stuck_sent_to_picking
-  input: "Ordrer som er ferdig plukket blir stående i status Sendt til plukk"
+  # Query about picked orders still stuck with status SENDT TIL PLUKK.
+  # SR-15091 (Ordre "Sendt til Plukk" savnes) describes the inverse problem
+  # (order missing from the queue, not picked-but-stuck) — IRRELEVANT.
+  # Pool: SR-15397 (Vestnes SENDT TIL PLUKK, butikk har mottatt varene),
+  #       SR-15554 (Gaula SENDT TIL PLUKK, er plukket),
+  #       SR-15489 (OMS 0-qty: ordrestatus blir igjen i SENDT TIL PLUKK)
+  input: "Ordre er plukket men ligger fortsatt med status SENDT TIL PLUKK"
   expected_keys:
-    - SR-15430
-    - SR-14709
-    - SR-14005
-    - SR-13510
-    - SR-14070
-    - SR-13554
+    - SR-15397
+    - SR-15554
+    - SR-15489
 
-- id: orders_wrong_status_not_invoiced
-  input: "Ferdigplukket ordrer har feil status og blir ikke fakturert"
+- id: orders_status_header_detail_mismatch
+  # Query about orders where header status doesn't match detail-bilde status.
+  # Only tickets matching the concrete query statuses (RESERVERT in header,
+  # KLAR TIL FAKTURERING in detail, SO pre-invoice flow) qualify as STRONG.
+  # SR-15396 (header OB GENERERT) is PARTIAL; SR-15562 is a PO post-invoice
+  # settlement issue with different statuses — IRRELEVANT despite shared
+  # abstract pattern.
+  input: "Ordre står som RESERVERT i header men er KLAR TIL FAKTURERING i detalj"
   expected_keys:
-    - SR-15350
-    - SR-14709
-    - SR-14573
-    - SR-14132
-    - SR-14099
-    - SR-14081
-    - SR-14252
+    - SR-15490
+    - SR-15511
 
 # ── Invoice / credit errors ────────────────────────────────────
-# Cluster: SR-14823, SR-15244, SR-12677, SR-12216, SR-11282,
-# SR-10103, SR-13754
-
-- id: double_credit_claims
-  input: "Reklamasjoner blir kreditert dobbelt med to ulike fakturanummer"
-  expected_keys:
-    - SR-14823
-    - SR-11282
 
 - id: invoice_deviation_amount
-  input: "Feil avviksbeløp eller øredifferanse på innkjøpsfaktura"
+  # Query about invoice amount deviation / price differences.
+  # SR-15291 (problemer å søke opp prisavvik) is a UI search bug, not
+  # about having a prisavvik — IRRELEVANT.
+  # Pool: SR-15417 (Prisavvik CD/medisin),
+  #       SR-14968 (prisavvik kontroll, feil antall),
+  #       SR-15513 (mangler blokkering ved mengde avvik),
+  #       SR-13540 (avvik på vektvare)
+  input: "Prisavvik eller feil beløp på innkjøpsfaktura"
   expected_keys:
-    - SR-15244
-    - SR-10103
-    - SR-12216
-    - SR-12677
+    - SR-15417
+    - SR-14968
+    - SR-15513
+    - SR-13540
 
-# ── Production stops / connection issues ────────────────────────
-# Cluster: SR-14891, SR-14096, SR-14135, SR-14672, SR-14392,
-# SR-13979, SR-14013
-
-- id: production_restart_trondheim
-  input: "Trondheim produksjon stoppet og måtte restartes"
+- id: invoice_matching_errors
+  # Query about invoices being matched incorrectly or stuck on unknown items
+  # Pool: SR-15531 (faktura uten innhold matchet med unntak),
+  #       SR-15195 (faktura matchet uten varemottak-kolonner),
+  #       SR-15437 (fakturaer med ukjent vare, korrekt GTIN),
+  #       SR-15530 (leverandør fakturerer med FPK pris),
+  #       SR-15470 (ukjent/feil varenummer på faktura),
+  #       SR-15584 (varelinje ikke funnet i faktura)
+  input: "Faktura blir matchet feil eller stopper opp på ukjent varenummer"
   expected_keys:
-    - SR-14096
-    - SR-14135
-    - SR-14672
-    - SR-14392
+    - SR-15531
+    - SR-15195
+    - SR-15437
+    - SR-15530
+    - SR-15470
+    - SR-15584
 
-- id: oms_connection_issues
-  input: "OMS går tom for connections og blir treg, ordre hoper seg opp"
+- id: invoice_missing_or_blocked
+  # Query about missing invoices or inability to process them.
+  # SR-15486 (PARTIAL: image-only description, only references SR-15435) dropped.
+  # Pool: SR-15474 (Mangler inng faktura Nortura),
+  #       SR-15503 (klarer ikke behandle faktura Sørlandschips),
+  #       SR-15435 (Får ikke godkjent faktura pga ordre ikke mottatt)
+  input: "Kan ikke godkjenne eller behandle faktura, mangler inngående faktura"
   expected_keys:
-    - SR-13979
-    - SR-14672
-    - SR-14013
+    - SR-15474
+    - SR-15503
+    - SR-15435
 
 # ── Delivery date / order deadline errors ───────────────────────
-# Cluster: SR-15419, SR-15409, SR-12087
 
 - id: delivery_date_wrong_after_import
+  # Query about bulk import putting orders on wrong delivery day
+  # Pool: SR-15419 (Bulk import feil leveringsdag),
+  #       SR-15340 (Ordreopprettelser hopper over ønsket leveringsdag),
+  #       SR-12087 (Bulk ordrer viser feil leveringsdato)
   input: "Bulk import legger ordrer til feil leveringsdag"
   expected_keys:
     - SR-15419
+    - SR-15340
     - SR-12087
 
-- id: order_deadline_shifted
-  input: "Ordrefrister i masterplanen er kastet rundt etter endring"
-  expected_keys:
-    - SR-15409
+# ── EPD / product sync issues ─────────────────────────────────
 
-# ── Missing order confirmations ─────────────────────────────────
-# Cluster: SR-13815, SR-12232, SR-12506, SR-15392
-
-- id: missing_order_confirmation
-  input: "Butikk mangler ordrebekreftelse og strykliste på levering"
+- id: epd_not_syncing_trace
+  # Query about EPD/product not appearing in Trace after sync.
+  # Absorbs the prior epd_gtin_conflict case (GTIN duplicates were a
+  # strict subset of the broader sync-failure cluster).
+  # Pool: SR-15539 (Fiskeboller ikke synkronisert, GTIN endring),
+  #       SR-15421 (Kryssordpenn ligger ikke i Trace),
+  #       SR-15381 (kommer ikke over i TIP, delt GTIN FPAK/PALL),
+  #       SR-15213 (Fanta Synkroniseringsloggen),
+  #       SR-14853 (Scotch Tape, GTIN duplisert),
+  #       SR-15564 (Flux ikke oppdatert GTIN),
+  #       SR-15298 (Synkroniseringsloggen — hva betyr årsakskoden),
+  #       SR-15319 (Synkroniseringsloggen, EPD med årsakskode product:...)
+  input: "EPD vare synkroniseres ikke inn i Trace, ligger i synkroniseringsloggen"
   expected_keys:
-    - SR-13815
-    - SR-12232
-    - SR-12506
+    - SR-15539
+    - SR-15421
+    - SR-15381
+    - SR-15213
+    - SR-14853
+    - SR-15564
+    - SR-15298
+    - SR-15319
+
+# ── Purchase order cancellation issues ──────────────────────────
+
+- id: cancel_purchase_order
+  # Query about inability to cancel purchase orders
+  # Pool: SR-15555 (PO 3600156706 endre status til kansellert),
+  #       SR-15506 (Får ikke manuelt kansellere innkjøpsordrer),
+  #       SR-15509 (Kanselering av po),
+  #       SR-15488 (PO 3600156192 endre status til kansellert)
+  input: "Får ikke kansellert innkjøpsordre, status blir ikke endret"
+  expected_keys:
+    - SR-15555
+    - SR-15506
+    - SR-15509
+    - SR-15488
+
+# ── Allocation / distribution issues (fordeling) ───────────────
+
+- id: maks_purchase_bug
+  # Pool: SR-15324 (Makskjøp bug),
+  #       SR-15446 (Makskjøp runder ned i Stavanger),
+  input: "Makskjøp fungerer ikke riktig, feil antall tildelt ut til butikker"
+  expected_keys:
+    - SR-15324
+    - SR-15446
+
+# ── WMS / warehouse operations ───────────────────────────────
+
+- id: wms_picking_generation_failed
+  # Query about not being able to generate picking rounds / orders to pick in WMS.
+  # SR-15460 (feilmelding på palleplukk, tildel plukkplass) is a plukkplass-
+  # assignment error on existing picks, not generation failure — IRRELEVANT.
+  # Pool: SR-15461 (Får ikke generert plukkrunder),
+  #       SR-15369 (ordre ikke overført til Witron WMS),
+  #       SR-15565 (ordre i plukkø generers ikke til plukk),
+  #       SR-15467 (Plukkgenerering har stoppet opp),
+  #       SR-15091 (ordre status "Sendt til plukk" men finnes ikke i WMS)
+  input: "Får ikke generert plukkrunder eller ordrer til plukk i WMS"
+  expected_keys:
+    - SR-15461
+    - SR-15369
+    - SR-15565
+    - SR-15467
+    - SR-15091
+
+- id: wms_oms_message_lag
+  # Query about WMS-to-OMS message delays causing stale inventory state.
+  # SR-15489 (OMS sender 0-qty til plukk, status stuck) is OMS→WMS
+  # direction with a status-update bug — different mechanism, IRRELEVANT.
+  # Pool: SR-15466 (Forsinkelse i meldinger fra WMS til OMS),
+  #       SR-15578 (Varer innregistrert i WMS 30/4, beholdning i AS 5/5)
+  input: "Meldinger fra WMS til OMS er forsinket, beholdning oppdateres ikke i tide"
+  expected_keys:
+    - SR-15466
+    - SR-15578
+
+# ── SSCC / packing slip identifier issues ──────────────────────
+
+- id: sscc_missing
+  # Query about SSCC pallet identifiers missing or invalid
+  # Pool: SR-15371 (mangler SSCC i witron å tms),
+  #       SR-15353 (SSCC finnes i WMS men ikke TMS),
+  #       SR-14998 (mangler RDI/SSCC info fra RDI)
+  input: "SSCC mangler eller er ugyldig mellom WMS, TMS og RDI"
+  expected_keys:
+    - SR-15371
+    - SR-15353
+    - SR-14998
+
+# ── Industriordre issues ────────────────────────────────────────
+
+- id: industriordre_issues
+  input: "Industriordre havner på feil distribunal"
+  expected_keys:
+    - SR-15357
+    - SR-15163
+
+# ── Inventory / stock discrepancy ──────────────────────────────
+
+- id: inventory_discrepancy_oms
+  # Query about inventory showing wrong numbers in OMS / between systems.
+  # SR-15512 ("Kan dere kjøre oppdatering på beholdning av vare X?") is a
+  # vague refresh request with no discrepancy described — PARTIAL, dropped.
+  # Pool: SR-13878 (feil beholdningsvisning i OMS),
+  #       SR-15076 (OMS hadde ikke riktig beholdning ved fordeling),
+  #       SR-15551 (Mykje behaldningsfeil),
+  #       SR-15592 (Beholdningsavvik ved cut-off APR-MAI),
+  #       SR-15487 (feil antall mellom AS og WMS),
+  #       SR-15468 (Beholding som ikke oppdaterer seg),
+  #       SR-15545 (FLØTEMYSOST beholdning avvik mellom WMS/OMS)
+  input: "Feil beholdning i OMS, tilgjengelig antall stemmer ikke"
+  expected_keys:
+    - SR-13878
+    - SR-15076
+    - SR-15551
+    - SR-15592
+    - SR-15487
+    - SR-15468
+    - SR-15545
+
+# ── Price discrepancy in product master ─────────────────────────
+
+- id: price_wrong_in_as # perfect
+  # Query about product having wrong price in AS / multiple pricing systems.
+  # SR-15227 (feil kundepris på 6109839 mellom REMA-butikker) is a
+  # customer-specific kundepris discrepancy, not a system-pricing
+  # mismatch between AS/Trace/Prissøk — IRRELEVANT.
+  # Pool: SR-15535 (Tannbørstehoder feil pris i AS vs Prissøk),
+  #       SR-15497 (Feil pris på epd 5567003 og 5567706 alle distribunaler),
+  #       SR-15128 (Idun dressing - ulik pris i Trace og AS)
+  input: "Vare har feil pris i AS, stemmer ikke med Trace eller Prissøk"
+  expected_keys:
+    - SR-15535
+    - SR-15497
+    - SR-15128
+
+# ── Transport / TMS issues ─────────────────────────────────────
+
+- id: tms_route_not_assigned
+  # Query about orders not being assigned a route/tour in TMS
+  # Pool: SR-15534 (ordre 1010149455 får ikke tildelt tur i tms),
+  #       SR-15348 (TM ordre har ikke fått tildelt tur),
+  input: "Ordre har ikke fått tildelt tur i TMS"
+  expected_keys:
+    - SR-15534
+    - SR-15348
+
+# ── Duplicate orders ───────────────────────────────────────────
+
+- id: duplicate_orders
+  # Query about duplicate orders being created or sent twice
+  # Pool: SR-15494 (Trace spammer GOLD med duplikate pushordre),
+  #       SR-15458 (Duplikat ordre til Rema Havstein),
+  #       SR-14338 (Monitoring/duplikat kontroll packer og webhooks)
+  input: "Ordrer blir duplikert / doblet og sendt flere ganger til samme kunde"
+  expected_keys:
+    - SR-15494
+    - SR-15458
+    - SR-14338
+
+# ── Access / user login issues ─────────────────────────────────
+
+- id: user_access_issues
+  # Query about user access / login problems
+  # Pool: SR-15557 (Voice bruker feil bruker/passord),
+  #       SR-15491 (WMS bruker uten passord),
+  #       SR-15570 (Ønsker tilgang til Trondheim-Trace WMS)
+  input: "Innlogging feiler — tilgang ser ut til å mangle. Hva må gjøres?"
+  expected_keys:
+    - SR-15557
+    - SR-15491
+    - SR-15570
+
+# ── Phrasing variants (same gold, paraphrased queries) ─────────
+# Tests that the retriever is robust to surface-form variation: longer
+# context, different register, fragments — all addressed to an AI agent.
+
+- id: missing_goods_receipt_general_paraphrase
+  # Paraphrase of missing_goods_receipt_general. Same gold set, longer
+  # narrative phrasing — customer just describes the situation.
+  input: "Jeg jobber på ordrekontoret og har fått flere telefoner i dag fra butikker som ikke har registrert varemottak. Hva kan ha skjedd?"
+  expected_keys:
+    - SR-15394
+    - SR-15498
+    - SR-15499
+    - SR-15397
+    - SR-15514
+    - SR-15517
+    - SR-15546
+    - SR-15440
+    - SR-15581
+    - SR-15587
+
+- id: invoice_matching_errors_paraphrase
+  # Paraphrase of invoice_matching_errors. Same gold set, conversational
+  # phrasing — customer describes symptoms and asks for help.
+  input: "Vi får problemer med fakturamatching, noen kommer ut med feil match og andre står på ukjent varenummer. Hva er årsaken?"
+  expected_keys:
+    - SR-15531
+    - SR-15195
+    - SR-15437
+    - SR-15530
+    - SR-15470
+    - SR-15584
+
+- id: sscc_missing_paraphrase
+  # Paraphrase of sscc_missing. Same gold set, narrative customer phrasing.
+  input: "Vi mangler SSCC i TMS på flere paller, men de ligger i WMS. Hva har skjedd?"
+  expected_keys:
+    - SR-15371
+    - SR-15353
+    - SR-14998
+
+- id: wms_picking_generation_failed_paraphrase
+  # Paraphrase of wms_picking_generation_failed. Same gold, frustrated
+  # short fragment with explicit help request.
+  input: "Plukkgenerering har låst seg igjen, får ikke ut noen ordrer til lageret. Hjelp."
+  expected_keys:
+    - SR-15461
+    - SR-15369
+    - SR-15565
+    - SR-15467
+    - SR-15091
+
+- id: epd_not_syncing_trace_paraphrase
+  # Paraphrase of epd_not_syncing_trace. Same gold, narrative with
+  # backstory about an external supplier interaction.
+  input: "Vi har en ny vare som EPD-tilbyderen sier de har sendt over, men jeg finner den ikke i Trace. Hva kan jeg sjekke?"
+  expected_keys:
+    - SR-15539
+    - SR-15421
+    - SR-15381
+    - SR-15213
+    - SR-14853
+    - SR-15564
+    - SR-15298
+    - SR-15319
+
+- id: inventory_discrepancy_oms_paraphrase
+  # Paraphrase of inventory_discrepancy_oms. Same gold, recurring-issue
+  # framing ("igjen") emphasizing repeated frustration.
+  input: "OMS viser feil tall igjen — tilgjengelig stemmer ikke med det vi faktisk har på lager. Hvorfor?"
+  expected_keys:
+    - SR-13878
+    - SR-15076
+    - SR-15551
+    - SR-15592
+    - SR-15487
+    - SR-15468
+    - SR-15545
+
+- id: delivery_date_wrong_after_import_paraphrase
+  # Paraphrase of delivery_date_wrong_after_import. Same gold, typo-laden
+  # casual phrasing — tests robustness to misspellings and dropped letters.
+  input: "ordre vi importa i går havna på feil leveringsdag. hva er greia her?"
+  expected_keys:
+    - SR-15419
+    - SR-15340
+    - SR-12087
+
+- id: invoice_deviation_amount_paraphrase
+  # Paraphrase of invoice_deviation_amount. Same gold, concrete supplier-
+  # specific narrative instead of abstract symptom description.
+  input: "Vi har en innkjøpsfaktura fra Nortura med beløp som ikke stemmer med PO. Hva gjør jeg?"
+  expected_keys:
+    - SR-15417
+    - SR-14968
+    - SR-15513
+    - SR-13540
+
+- id: missing_packing_slip_tm_paraphrase
+  # Paraphrase of missing_packing_slip_tm. Same gold, location-specific
+  # complaint chaining the symptom (mangler pakkseddelref) with downstream
+  # impact (ikke fakturert).
+  input: "Tobakkleveransen til Heimdal mangler pakkseddelref og er ikke fakturert. Hva er galt?"
+  expected_keys:
+    - SR-15310
+    - SR-15387
+    - SR-15521
+    - SR-15528
+    - SR-15511
+    - SR-15575
+
+- id: duplicate_orders_paraphrase
+  # Paraphrase of duplicate_orders. Same gold, customer-impact framing
+  # (downstream complaint) instead of system-level description.
+  input: "Rema klager på at de har fått samme ordre tre ganger i dag. Hva har skjedd?"
+  expected_keys:
+    - SR-15494
+    - SR-15458
+    - SR-14338
+
+# ── Negative cases (no relevant tickets exist) ─────────────────
+# expected_keys is empty: there are no relevant tickets in the corpus.
+# Pass states are either (a) the agent declines to search at all, or
+# (b) it searches and the similarity cutoff filters everything out.
+# Fail state: the agent surfaces tickets despite none being relevant.
+# Excluded from aggregate metrics.
+#
+# Cases span a relevancy gradient — from zero-overlap (different domain)
+# to high-overlap (many corpus terms combined into a query with no
+# matching ticket). The gradient stresses cutoff calibration: cases at
+# the high-overlap end are the hardest filtering challenge.
+
+- id: negative_truck_batteries
+  # Out-of-scope operational issue not represented in the corpus.
+  # No relevant tickets — agent may skip retrieval, or cutoff filters
+  # any surface matches.
+  input: "Truckbatteriene tappes raskere enn vanlig på Berger og lader ikke til 100%. Hva kan vi gjøre?"
+  expected_keys: []
+
+- id: negative_delivery_day_config
+  # Surface keyword overlap with delivery_date_wrong_after_import
+  # ("leveringsdag"), but this is a config how-to question, not a bug.
+  # No corpus tickets document the configuration UI itself.
+  input: "Hvor i Trace stiller jeg inn standard leveringsdag for en kunde?"
+  expected_keys: []
+
+- id: negative_sscc_terminology
+  # Surface keyword overlap with sscc_missing ("SSCC", "pakkseddelreferanse"),
+  # but this is a terminology/educational question, not a support issue.
+  input: "Kan du forklare hva forskjellen er mellom SSCC og pakkseddelreferanse?"
+  expected_keys: []
+
+- id: negative_overtime_form
+  # Zero overlap: HR question, completely outside the support corpus.
+  # Agent may legitimately decline to search at all.
+  input: "Hvordan fyller jeg ut overtidsskjema for forrige uke?"
+  expected_keys: []
+
+- id: negative_warehouse_gloves
+  # Low overlap: warehouse-adjacent ("Heimdal", "lager") but it's a supply
+  # restock question, not a system support issue.
+  input: "Vi har gått tomme for arbeidshansker på Heimdal-lageret. Hvem bestiller etterforsyninger?"
+  expected_keys: []
+
+- id: negative_invoice_report
+  # Medium overlap: surface match with "faktura"/"ordre" but the question
+  # is about reports/UI navigation, not a bug.
+  input: "Hvor finner jeg en månedlig rapport over fakturerte ordrer per kunde?"
+  expected_keys: []
+
+- id: negative_price_override_reserved
+  # High overlap: combines two corpus topics (RESERVERT status from
+  # orders_status_header_detail_mismatch, manual price override hinting
+  # at price tickets), but it's a how-to/permissions question with no
+  # matching incident ticket.
+  input: "Når en ordre ligger som RESERVERT, kan jeg overstyre prisen manuelt på en linje?"
+  expected_keys: []
+
+- id: negative_wms_migration
+  # High overlap: mentions Witron and WMS (heavily used in corpus), but
+  # this is a strategic planning question about migrating systems —
+  # nothing in the support corpus addresses migration planning.
+  input: "Vi planlegger å migrere fra Witron til en annen WMS-leverandør. Hvor mye nedetid bør vi regne med?"
+  expected_keys: []
+
+# ── Cross-lingual variants (English query, Norwegian corpus) ───
+# Tests whether the embedding model + reranker can bridge the language
+# gap — same gold sets as the Norwegian originals.
+
+- id: missing_goods_receipt_general_english
+  # English variant of missing_goods_receipt_general. Same gold set.
+  input: "Stores are reporting missing goods receipt on today's delivery. What could be wrong?"
+  expected_keys:
+    - SR-15394
+    - SR-15498
+    - SR-15499
+    - SR-15397
+    - SR-15514
+    - SR-15517
+    - SR-15546
+    - SR-15440
+    - SR-15581
+    - SR-15587
+
+- id: cancel_purchase_order_english
+  # English variant of cancel_purchase_order. Same gold set.
+  input: "I can't cancel a purchase order — the status won't update. What's going on?"
+  expected_keys:
+    - SR-15555
+    - SR-15506
+    - SR-15509
+    - SR-15488
+
+- id: wms_picking_generation_failed_english
+  # English variant of wms_picking_generation_failed. Same gold set.
+  input: "We can't generate picking rounds in WMS — orders just sit in the queue and don't go through to picking. What's wrong?"
+  expected_keys:
+    - SR-15461
+    - SR-15369
+    - SR-15565
+    - SR-15467
+    - SR-15091
+
+- id: invoice_matching_errors_english
+  # English variant of invoice_matching_errors. Same gold set.
+  input: "Invoices keep getting matched to the wrong items, and others get stuck on unknown article numbers. What's causing this?"
+  expected_keys:
+    - SR-15531
+    - SR-15195
+    - SR-15437
+    - SR-15530
+    - SR-15470
+    - SR-15584
+
+- id: sscc_missing_english
+  # English variant of sscc_missing. Same gold set.
+  input: "We're seeing SSCC missing or invalid between WMS, TMS, and RDI. What's wrong?"
+  expected_keys:
+    - SR-15371
+    - SR-15353
+    - SR-14998
+
+- id: epd_not_syncing_trace_english
+  # English variant of epd_not_syncing_trace. Same gold set.
+  input: "An EPD product won't sync into Trace — it's stuck in the synchronization log. What's blocking it?"
+  expected_keys:
+    - SR-15539
+    - SR-15421
+    - SR-15381
+    - SR-15213
+    - SR-14853
+    - SR-15564
+    - SR-15298
+    - SR-15319
+
+- id: inventory_discrepancy_oms_english
+  # English variant of inventory_discrepancy_oms. Same gold set.
+  input: "The available stock in OMS is wrong — the numbers don't match what we actually have. What's happening?"
+  expected_keys:
+    - SR-13878
+    - SR-15076
+    - SR-15551
+    - SR-15592
+    - SR-15487
+    - SR-15468
+    - SR-15545
+
+- id: delivery_date_wrong_after_import_english
+  # English variant of delivery_date_wrong_after_import. Same gold set.
+  input: "After bulk-importing orders they end up on the wrong delivery day. Why?"
+  expected_keys:
+    - SR-15419
+    - SR-15340
+    - SR-12087
+
+- id: duplicate_orders_english
+  # English variant of duplicate_orders. Same gold set.
+  input: "Orders are getting duplicated and sent multiple times to the same customer. What's going on?"
+  expected_keys:
+    - SR-15494
+    - SR-15458
+    - SR-14338
+
+- id: user_access_issues_english
+  # English variant of user_access_issues. Same gold set.
+  input: "I can't log in — I think I'm missing access. What do I do?"
+  expected_keys:
+    - SR-15557
+    - SR-15491
+    - SR-15570
