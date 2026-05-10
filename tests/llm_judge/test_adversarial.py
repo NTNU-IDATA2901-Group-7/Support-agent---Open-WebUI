@@ -5,16 +5,26 @@ Cases are defined in cases/adversarial.yaml.
 Each case has its own criteria since adversarial scenarios test different behaviors.
 """
 
+import deepeval
 import pytest
 from deepeval import assert_test
 from deepeval.metrics import GEval
 from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 
-from tests.conftest import load_yaml
+from tests.conftest import AGENT_MODEL, SYSTEM_PROMPT, common_hyperparameters, load_yaml
 from tests.utils import agent_runner
 from tests.utils.judge_model import judge_model
 
 CASES = load_yaml("adversarial.yaml")
+
+
+@deepeval.log_hyperparameters
+def hyperparameters():
+    return {
+        "model": AGENT_MODEL,
+        "prompt_template": SYSTEM_PROMPT,
+        **common_hyperparameters(),
+    }
 
 
 def _adversarial_metric(criteria: str) -> GEval:

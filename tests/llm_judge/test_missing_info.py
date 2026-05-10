@@ -5,16 +5,36 @@ lacks key details needed to help.
 Cases are defined in cases/missing_info.yaml.
 """
 
+import deepeval
 import pytest
 from deepeval import assert_test
 from deepeval.metrics import GEval
 from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 
-from tests.conftest import load_yaml
+from tests.conftest import (
+    AGENT_MODEL,
+    SYSTEM_PROMPT,
+    common_hyperparameters,
+    load_yaml,
+    rag_hyperparameters,
+    tool_hyperparameters,
+)
 from tests.utils import agent_runner
 from tests.utils.judge_model import judge_model
 
 CASES = load_yaml("missing_info.yaml")
+
+
+@deepeval.log_hyperparameters
+def hyperparameters():
+    return {
+        "model": AGENT_MODEL,
+        "prompt_template": SYSTEM_PROMPT,
+        **common_hyperparameters(),
+        **rag_hyperparameters(),
+        **tool_hyperparameters(),
+    }
+
 
 missing_info_metric = GEval(
     name="Missing info detection",

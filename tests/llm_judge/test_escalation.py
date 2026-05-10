@@ -4,16 +4,27 @@ Ticket escalation — agent should suggest escalating when it cannot resolve the
 Cases are defined in cases/escalation.yaml.
 """
 
+import deepeval
 import pytest
 from deepeval import assert_test
 from deepeval.metrics import GEval
 from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 
-from tests.conftest import load_yaml
+from tests.conftest import AGENT_MODEL, SYSTEM_PROMPT, common_hyperparameters, load_yaml
 from tests.utils import agent_runner
 from tests.utils.judge_model import judge_model
 
 CASES = load_yaml("escalation.yaml")
+
+
+@deepeval.log_hyperparameters
+def hyperparameters():
+    return {
+        "model": AGENT_MODEL,
+        "prompt_template": SYSTEM_PROMPT,
+        **common_hyperparameters(),
+    }
+
 
 escalation_metric = GEval(
     name="Ticket escalation",

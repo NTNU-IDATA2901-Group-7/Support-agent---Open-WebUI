@@ -6,19 +6,39 @@ Cases are defined in cases/correctness.yaml.
 To add a test: edit the YAML. No Python changes needed.
 """
 
+import deepeval
 import pytest
 from deepeval import assert_test
 from deepeval.metrics import GEval
 from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 
-from tests.conftest import load_yaml
+from tests.conftest import (
+    AGENT_MODEL,
+    SYSTEM_PROMPT,
+    common_hyperparameters,
+    load_yaml,
+    rag_hyperparameters,
+    tool_hyperparameters,
+)
 from tests.utils import agent_runner
 from tests.utils.judge_model import judge_model
 
 CASES = load_yaml("correctness.yaml")
 
+
+@deepeval.log_hyperparameters
+def hyperparameters():
+    return {
+        "model": AGENT_MODEL,
+        "prompt_template": SYSTEM_PROMPT,
+        **common_hyperparameters(),
+        **rag_hyperparameters(),
+        **tool_hyperparameters(),
+    }
+
+
 correctness_metric = GEval(
-    name="Factual correctness",
+    name="Correctness",
     model=judge_model,
     evaluation_steps=[
         "Identify the key facts in the expected output: specific numbers, "

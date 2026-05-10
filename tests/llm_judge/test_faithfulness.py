@@ -7,16 +7,36 @@ retrieval context is extracted from tool call results (not knowledge base
 sources) since these tests run without pre-injected files.
 """
 
+import deepeval
 import pytest
 from deepeval import assert_test
 from deepeval.metrics import FaithfulnessMetric
 from deepeval.test_case import LLMTestCase
 
-from tests.conftest import load_yaml
+from tests.conftest import (
+    AGENT_MODEL,
+    SYSTEM_PROMPT,
+    common_hyperparameters,
+    load_yaml,
+    rag_hyperparameters,
+    tool_hyperparameters,
+)
 from tests.utils import agent_runner
 from tests.utils.judge_model import judge_model
 
 CASES = load_yaml("retrieval.yaml")
+
+
+@deepeval.log_hyperparameters
+def hyperparameters():
+    return {
+        "model": AGENT_MODEL,
+        "prompt_template": SYSTEM_PROMPT,
+        **common_hyperparameters(),
+        **rag_hyperparameters(),
+        **tool_hyperparameters(),
+    }
+
 
 faithfulness_metric = FaithfulnessMetric(
     model=judge_model,
