@@ -1,4 +1,5 @@
 import base64
+
 import copy
 import hashlib
 import logging
@@ -868,7 +869,7 @@ class OAuthClientManager:
             if token:
                 try:
                     # Add timestamp for tracking
-                    token["issued_at"] = int(datetime.now().timestamp())
+                    token["issued_at"] = datetime.now().timestamp()
 
                     # Calculate expires_at if we have expires_in
                     if "expires_in" in token and "expires_at" not in token:
@@ -1396,7 +1397,16 @@ class OAuthManager:
         kwargs = {}
         if auth_manager_config.OAUTH_AUDIENCE:
             kwargs["audience"] = auth_manager_config.OAUTH_AUDIENCE
+        elif provider == "atlassian":
+            kwargs["audience"] = "api.atlassian.com"
 
+        # Atlassian requires prompt=consent when offline_access scope is requested
+        if provider == "atlassian":
+            kwargs["prompt"] = "consent"
+
+        log.info(
+            f"[OAuth] handle_login: provider={provider}, redirect_uri={redirect_uri}, kwargs_keys={list(kwargs.keys())}"
+        )
         return await client.authorize_redirect(request, redirect_uri, **kwargs)
 
     async def handle_callback(self, request, provider, response, db=None):
@@ -1423,10 +1433,17 @@ class OAuthManager:
                     auth_params["client_id"] = client.client_id
 
             try:
+                log.info(
+                    f"[OAuth] handle_callback: exchanging auth code for provider={provider}"
+                )
                 token = await client.authorize_access_token(request, **auth_params)
+                log.info(
+                    f"[OAuth] handle_callback: token exchanged successfully for provider={provider}, token_keys={list(dict(token).keys())}"
+                )
                 jira_link_user_id = request.session.pop("jira_link_user_id", None)
-                if jira_link_user_id:
-                    is_jira_linking = True
+                log.info(
+                    f"[OAuth] handle_callback: jira_link_user_id from session={jira_link_user_id}"
+                )
             except Exception as e:
                 detailed_error = _build_oauth_callback_error_message(e)
                 log.warning(
@@ -1436,6 +1453,24 @@ class OAuthManager:
                     exc_info=True,
                 )
                 raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
+
+            # Check if this is a JIRA linking request based on session
+            if provider == "atlassian" and jira_link_user_id:
+                try:
+                    jira_link_user = Users.get_user_by_id(jira_link_user_id, db=db)
+                    if jira_link_user:
+                        is_jira_linking = True
+                        log.info(
+                            f"[JIRA-LINK] Detected JIRA linking flow for user_id={jira_link_user_id}"
+                        )
+                    else:
+                        jira_link_user_id = None  # Clear invalid user ID from session
+                        log.warning(
+                            f"[JIRA-LINK] User not found in DB, clearing jira_link_user_id"
+                        )
+                except Exception as e:
+                    jira_link_user_id = None  # Clear invalid user ID from session
+                    log.warning(f"[JIRA-LINK] Error looking up user: {e}")
 
             # Try to get userinfo from the token first, some providers include it there
             user_data: UserInfo = token.get("userinfo")
@@ -1465,72 +1500,6 @@ class OAuthManager:
                 log.warning(f"OAuth callback failed, sub is missing: {user_data}")
                 raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
 
-            oauth_data = {}
-            oauth_data[provider] = {
-                "sub": sub,
-            }
-
-            # Email extraction
-            email_claim = auth_manager_config.OAUTH_EMAIL_CLAIM
-            email = user_data.get(email_claim, "")
-            # We currently mandate that email addresses are provided
-            if not email:
-                # If the provider is GitHub,and public email is not provided, we can use the access token to fetch the user's email
-                if provider == "github":
-                    try:
-                        access_token = token.get("access_token")
-                        headers = {"Authorization": f"Bearer {access_token}"}
-                        async with aiohttp.ClientSession(trust_env=True) as session:
-                            async with session.get(
-                                "https://api.github.com/user/emails",
-                                headers=headers,
-                                ssl=AIOHTTP_CLIENT_SESSION_SSL,
-                            ) as resp:
-                                if resp.ok:
-                                    emails = await resp.json()
-                                    # use the primary email as the user's email
-                                    primary_email = next(
-                                        (
-                                            e["email"]
-                                            for e in emails
-                                            if e.get("primary")
-                                        ),
-                                        None,
-                                    )
-                                    if primary_email:
-                                        email = primary_email
-                                    else:
-                                        log.warning(
-                                            "No primary email found in GitHub response"
-                                        )
-                                        raise HTTPException(
-                                            400, detail=ERROR_MESSAGES.INVALID_CRED
-                                        )
-                                else:
-                                    log.warning("Failed to fetch GitHub email")
-                                    raise HTTPException(
-                                        400, detail=ERROR_MESSAGES.INVALID_CRED
-                                    )
-                    except Exception as e:
-                        log.warning(f"Error fetching GitHub email: {e}")
-                        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
-                elif ENABLE_OAUTH_EMAIL_FALLBACK:
-                    email = f"{provider}@{sub}.local"
-                else:
-                    log.warning(f"OAuth callback failed, email is missing: {user_data}")
-                    raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
-
-            email = email.lower()
-            # If allowed domains are configured, check if the email domain is in the list
-            if (
-                "*" not in auth_manager_config.OAUTH_ALLOWED_DOMAINS
-                and email.split("@")[-1]
-                not in auth_manager_config.OAUTH_ALLOWED_DOMAINS
-            ):
-                log.warning(
-                    f"OAuth callback failed, e-mail domain is not in the list of allowed domains: {user_data}"
-                )
-                raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
             # Handle JIRA linking early — the user is already authenticated,
             # so we skip email extraction, domain checks, and user lookup.
             if is_jira_linking and jira_link_user_id:
@@ -1602,6 +1571,7 @@ class OAuthManager:
                         token_dict["expires_at"] = int(
                             datetime.now().timestamp()
                         ) + int(token_dict["expires_in"])
+                    # Ensure expires_at is always set (fallback: 1 hour from now)
                     if (
                         "expires_at" not in token_dict
                         or token_dict["expires_at"] is None
@@ -1612,8 +1582,6 @@ class OAuthManager:
                         log.warning(
                             "[JIRA-LINK] expires_at was missing, set fallback to 1 hour"
                         )
-                    else:
-                        token_dict["expires_at"] = int(token_dict["expires_at"])
 
                     log.info(
                         f"[JIRA-LINK] Token enriched. cloud_id={cloud_id}, expires_at={token_dict.get('expires_at')}"
@@ -1642,7 +1610,7 @@ class OAuthManager:
                     )
                     if not new_session:
                         log.error(
-                            "[JIRA-LINK] OAuthSessions.create_session returned None"
+                            "[JIRA-LINK] OAuthSessions.create_session returned None — DB insert likely failed"
                         )
                         raise HTTPException(
                             500, detail="Failed to store Atlassian session in database"
@@ -1652,6 +1620,7 @@ class OAuthManager:
                         f"[JIRA-LINK] Session stored: id={new_session.id}, provider={new_session.provider}, user={user.id}"
                     )
 
+                    # Create JWT token for the user
                     jwt_token = create_token(
                         data={"id": user.id},
                         expires_delta=parse_duration(
@@ -1677,16 +1646,83 @@ class OAuthManager:
                     )
                     return response
                 except HTTPException:
-                    raise
+                    raise  # Re-raise HTTPExceptions with their original detail
                 except Exception as e:
                     log.error(
-                        f"[JIRA-LINK] Unexpected error: {type(e).__name__}: {e}",
+                        f"[JIRA-LINK] Unexpected error during JIRA linking: {type(e).__name__}: {e}",
                         exc_info=True,
                     )
                     raise HTTPException(
                         500,
                         detail=f"Failed to link JIRA account: {type(e).__name__}: {e}",
                     )
+
+            oauth_data = {}
+            oauth_data[provider] = {
+                "sub": sub,
+            }
+
+            # Email extraction
+            email_claim = auth_manager_config.OAUTH_EMAIL_CLAIM
+            email = user_data.get(email_claim, "")
+            # We currently mandate that email addresses are provided
+            if not email:
+                # If the provider is GitHub,and public email is not provided, we can use the access token to fetch the user's email
+                if provider == "github":
+                    try:
+                        access_token = token.get("access_token")
+                        headers = {"Authorization": f"Bearer {access_token}"}
+                        async with aiohttp.ClientSession(trust_env=True) as session:
+                            async with session.get(
+                                "https://api.github.com/user/emails",
+                                headers=headers,
+                                ssl=AIOHTTP_CLIENT_SESSION_SSL,
+                            ) as resp:
+                                if resp.ok:
+                                    emails = await resp.json()
+                                    # use the primary email as the user's email
+                                    primary_email = next(
+                                        (
+                                            e["email"]
+                                            for e in emails
+                                            if e.get("primary")
+                                        ),
+                                        None,
+                                    )
+                                    if primary_email:
+                                        email = primary_email
+                                    else:
+                                        log.warning(
+                                            "No primary email found in GitHub response"
+                                        )
+                                        raise HTTPException(
+                                            400, detail=ERROR_MESSAGES.INVALID_CRED
+                                        )
+                                else:
+                                    log.warning("Failed to fetch GitHub email")
+                                    raise HTTPException(
+                                        400, detail=ERROR_MESSAGES.INVALID_CRED
+                                    )
+                    except Exception as e:
+                        log.warning(f"Error fetching GitHub email: {e}")
+                        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
+                elif ENABLE_OAUTH_EMAIL_FALLBACK:
+                    email = f"{provider}@{sub}.local"
+                else:
+                    log.warning(f"OAuth callback failed, email is missing: {user_data}")
+                    raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
+
+            email = email.lower()
+            # If allowed domains are configured, check if the email domain is in the list
+            if (
+                "*" not in auth_manager_config.OAUTH_ALLOWED_DOMAINS
+                and email.split("@")[-1]
+                not in auth_manager_config.OAUTH_ALLOWED_DOMAINS
+            ):
+                log.warning(
+                    f"OAuth callback failed, e-mail domain is not in the list of allowed domains: {user_data}"
+                )
+                raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
 
             # Check if the user exists
             user = Users.get_user_by_oauth_sub(provider, sub, db=db)
@@ -1846,13 +1882,19 @@ class OAuthManager:
                     token["expires_in"]
                 )
 
-            # Ensure expires_at is always an int
+            # Ensure expires_at is always an int and never None
             if "expires_at" in token and token["expires_at"] is not None:
                 token["expires_at"] = int(token["expires_at"])
             elif "expires_at" not in token or token["expires_at"] is None:
                 token["expires_at"] = int(datetime.now().timestamp()) + 3600
 
-            # For Atlassian OAuth, enrich token with cloud_id and account_id BEFORE storing
+            # Clean up any existing sessions for this user/provider first
+            sessions = OAuthSessions.get_sessions_by_user_id(user.id, db=db)
+            for session in sessions:
+                if session.provider == provider:
+                    OAuthSessions.delete_session_by_id(session.id, db=db)
+
+            # For Atlassian OAuth, enrich token with cloud_id and account_id
             if provider == "atlassian":
                 try:
                     atlassian_account_id = sub
@@ -1878,12 +1920,6 @@ class OAuthManager:
                     token["atlassian_account_id"] = atlassian_account_id
                 except Exception as e:
                     log.warning(f"Error enriching Atlassian token with cloud_id: {e}")
-
-            # Clean up any existing sessions for this user/provider first
-            sessions = OAuthSessions.get_sessions_by_user_id(user.id, db=db)
-            for session in sessions:
-                if session.provider == provider:
-                    OAuthSessions.delete_session_by_id(session.id, db=db)
 
             session = OAuthSessions.create_session(
                 user_id=user.id,

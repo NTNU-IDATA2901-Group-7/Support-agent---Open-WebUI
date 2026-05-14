@@ -94,9 +94,39 @@
 
 	let newFolderId = null;
 
+	// Jira connection status
+	let jiraConnected = false;
+	let jiraChecking = false;
+
 	$: if ($selectedFolder) {
 		initFolders();
 	}
+
+	const checkJiraConnection = async () => {
+		jiraChecking = true;
+		try {
+			const response = await fetch(`${WEBUI_API_BASE_URL}/auths/jira/status`, {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					...(localStorage.token && { Authorization: `Bearer ${localStorage.token}` })
+				}
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				jiraConnected = data.connected || false;
+			}
+		} catch (error) {
+			console.error('Error checking JIRA connection:', error);
+		} finally {
+			jiraChecking = false;
+		}
+	};
+
+	const handleJiraConnect = () => {
+		window.location.href = `${WEBUI_API_BASE_URL}/auths/jira/link/authorize`;
+	};
 
 	const initFolders = async () => {
 		if ($config?.features?.enable_folders === false) {
@@ -471,6 +501,8 @@
 						await initChannels();
 					}
 					await initChatList();
+					// Check Jira connection when sidebar is shown
+					await checkJiraConnection();
 				}
 			}),
 			settings.subscribe((value) => {
@@ -1353,6 +1385,20 @@
 				<div
 					class=" sidebar-bg-gradient-to-t bg-linear-to-t from-gray-50 dark:from-gray-950 to-transparent from-50% pointer-events-none absolute inset-0 -z-10 -mt-6"
 				></div>
+
+				<!-- Connect to Jira Button -->
+				{#if !jiraConnected && !jiraChecking && $user !== undefined && $user !== null}
+					<div class="mb-2 px-1">
+						<button
+							type="button"
+							on:click={handleJiraConnect}
+							class="w-full px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors"
+						>
+							{$i18n.t('Connect to Jira')}
+						</button>
+					</div>
+				{/if}
+
 				<div class="flex items-center justify-between gap-1 font-primary w-full">
 					{#if $user !== undefined && $user !== null}
 						<div class="flex-1 min-w-0">
