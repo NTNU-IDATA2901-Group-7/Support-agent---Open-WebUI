@@ -17,7 +17,8 @@ fi
 if [ -n "${WEBUI_SECRET_KEY_FILE}" ]; then
     KEY_FILE="${WEBUI_SECRET_KEY_FILE}"
 else
-    KEY_FILE=".webui_secret_key"
+    # Store key in persistent data directory to survive container restarts
+    KEY_FILE="./data/.webui_secret_key"
 fi
 
 PORT="${PORT:-8080}"
@@ -72,6 +73,45 @@ fi
 PYTHON_CMD=$(command -v python3 || command -v python)
 UVICORN_WORKERS="${UVICORN_WORKERS:-1}"
 
+# MCP Server and mcpo proxy setup
+# These are required for tool integration (e.g., Jira)
+MCP_PORT="${MCP_PORT:-8000}"
+MCPO_PORT="${MCPO_PORT:-8001}"
+
+# Start MCP server in background (Streamable HTTP)
+echo "Starting MCP server on port $MCP_PORT..."
+PYTHONPATH="." "$PYTHON_CMD" open_webui/utils/mcp/server.py &
+MCP_PID=$!
+
+# Wait for MCP server to be ready
+echo "Waiting for MCP server to be ready..."
+max_attempts=30
+attempts=0
+while [ $attempts -lt $max_attempts ]; do
+  if curl -s -o /dev/null "http://localhost:$MCP_PORT/mcp"; then
+    echo "MCP server is ready."
+    break
+  fi
+  sleep 1
+  attempts=$((attempts + 1))
+done
+
+if [ $attempts -eq $max_attempts ]; then
+  echo "Warning: MCP server did not respond within expected time. Continuing anyway..."
+fi
+
+# Start mcpo proxy in background (OpenAPI wrapper for Open WebUI)
+echo "Starting mcpo proxy on port $MCPO_PORT..."
+if command -v uvx &> /dev/null; then
+  uvx mcpo --port "$MCPO_PORT" --server-type "streamable-http" -- "http://localhost:$MCP_PORT/mcp" &
+  MCPO_PID=$!
+else
+  echo "Warning: uvx not found. mcpo proxy will not be started. Tool integration may not work."
+fi
+
+# Set up trap to kill MCP and mcpo processes on exit
+trap "kill $MCP_PID $MCPO_PID 2>/dev/null" EXIT
+
 # If script is called with arguments, use them; otherwise use default workers
 if [ "$#" -gt 0 ]; then
     ARGS=("$@")
@@ -80,6 +120,7 @@ else
 fi
 
 # Run uvicorn
+echo "Starting Open WebUI on port $PORT..."
 WEBUI_SECRET_KEY="$WEBUI_SECRET_KEY" exec "$PYTHON_CMD" -m uvicorn open_webui.main:app \
     --host "$HOST" \
     --port "$PORT" \
