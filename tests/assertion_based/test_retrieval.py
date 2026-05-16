@@ -32,6 +32,7 @@ from tests.conftest import (
     tool_hyperparameters,
 )
 from tests.utils import agent_runner
+from tests.utils.categorize import classify_retrieval_case
 from tests.utils.precomputed_metric import PrecomputedMetric
 
 CASES = load_yaml("retrieval.yaml")
@@ -59,24 +60,6 @@ EXPECTED_RETRIEVAL_TOOL = "search_vector_db_for_similar_jira_tickets_tool"
 
 # Collect per-case metrics for aggregate summary
 _results: list[dict] = []
-
-
-def _classify_case(case_id: str) -> str:
-    """Bucket a case by what it tests, for stratified aggregate metrics.
-
-    Categories:
-      - negative:   no relevant tickets exist (pass = nothing retrieved)
-      - paraphrase: same gold as an original case, different surface form
-      - english:    English query against the Norwegian corpus
-      - original:   the baseline Norwegian phrasing
-    """
-    if case_id.startswith("negative_"):
-        return "negative"
-    if case_id.endswith("_paraphrase"):
-        return "paraphrase"
-    if case_id.endswith("_english"):
-        return "english"
-    return "original"
 
 
 def _extract_retrieved_keys(tool_calls: list[dict]) -> list[str]:
@@ -217,32 +200,45 @@ def test_retrieval(case: dict):
     search_queries = _extract_search_queries(result.tool_calls)
     retrieved_keys = _extract_retrieved_keys(result.tool_calls)
     expected_keys = set(case["expected_keys"])
+    category = classify_retrieval_case(case["id"])
 
-    # Negative cases: no relevant tickets exist. Either the agent skips
-    # retrieval entirely (fine for clearly off-topic queries), or it searches
-    # and the similarity cutoff filters everything out. Both are pass states.
-    # Tracked in _results for the aggregate count, but with None metrics —
-    # excluded from mean P/R_cap/NDCG calculations.
+    # Negative cases: pass = nothing retrieved (either the agent skipped
+    # retrieval, or the similarity cutoff filtered everything out). Shipped
+    # under a separate metric name so failures don't dilute the IR aggregates.
     if not expected_keys:
-        assert not retrieved_keys, (
-            f"Expected no retrieved tickets (no relevant tickets exist for "
-            f"this query), but got {retrieved_keys}"
-        )
+        score = 1.0 if not retrieved_keys else 0.0
         _results.append(
             {
                 "case_id": case["id"],
-                "category": _classify_case(case["id"]),
+                "category": category,
                 "precision": None,
                 "r_cap": None,
                 "ndcg": None,
             }
         )
+        test_case = LLMTestCase(
+            input=case["input"],
+            actual_output=", ".join(retrieved_keys) if retrieved_keys else "<none>",
+            expected_output="<none>",
+            retrieval_context=retrieved_keys or ["<none>"],
+            additional_metadata={"category": category},
+        )
+        metric = PrecomputedMetric(
+            name="NoRetrievalExpected",
+            score=score,
+            threshold=1.0,
+            reason=(
+                f"unexpectedly retrieved={retrieved_keys}"
+                if retrieved_keys
+                else "no retrieval (or cutoff filtered everything)"
+            ),
+        )
+        assert_test(test_case, [metric])
         return
 
-    assert (
-        EXPECTED_RETRIEVAL_TOOL in tool_names
-    ), f"Expected retrieval tool '{EXPECTED_RETRIEVAL_TOOL}' not found in {tool_names}"
-
+    # Positive cases. If retrieval wasn't triggered, retrieved_keys is empty
+    # and all IR metrics compute to 0 — the case still ships to Confident AI
+    # rather than being silently dropped on a pre-assert.
     precision = _precision_at_k(retrieved_keys, expected_keys, RETRIEVAL_K)
     r_cap = _r_cap_at_k(retrieved_keys, expected_keys, RETRIEVAL_K)
     ndcg = _ndcg_at_k(retrieved_keys, expected_keys, RETRIEVAL_K)
@@ -261,7 +257,7 @@ def test_retrieval(case: dict):
     _results.append(
         {
             "case_id": case["id"],
-            "category": _classify_case(case["id"]),
+            "category": category,
             "precision": precision,
             "r_cap": r_cap,
             "ndcg": ndcg,
@@ -270,13 +266,21 @@ def test_retrieval(case: dict):
 
     top_k = retrieved_keys[:RETRIEVAL_K]
     hits = [k for k in top_k if k in expected_keys]
-    reason_suffix = f"retrieved={top_k}, expected={sorted(expected_keys)}, hits={hits}"
+    tool_note = (
+        f" [retrieval tool not called; tools={tool_names}]"
+        if EXPECTED_RETRIEVAL_TOOL not in tool_names
+        else ""
+    )
+    reason_suffix = (
+        f"retrieved={top_k}, expected={sorted(expected_keys)}, hits={hits}{tool_note}"
+    )
 
     test_case = LLMTestCase(
         input=case["input"],
         actual_output=", ".join(top_k) if top_k else "<none>",
         expected_output=", ".join(sorted(expected_keys)),
         retrieval_context=retrieved_keys or ["<none>"],
+        additional_metadata={"category": category},
     )
 
     precision_metric = PrecomputedMetric(
