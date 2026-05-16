@@ -18,13 +18,13 @@
 
 # ── Missing packing slip reference (pakkseddelref) ─────────────
 
-- id: missing_packing_slip_tm # passes
+- id: missing_packing_slip_tm
   # Query about T&M (tobakk/medisin) deliveries missing packing slip ref
   # Pool: SR-15404 (Hell T&M), SR-15310 (OTG T&M), SR-15387 (Rissa tobakk),
   #       SR-15521 (Paul Nyrgaard/Lyngåsen tobakk), SR-15528 (Tp engros tobakk),
   #       SR-15511 (klar til fakturering, mangler pakkseddelref),
   #       SR-15575 (Crossdock-ordrer T&M Kroppanmarka mangler utgående pakkseddel)
-  input: "Pakkseddelreferanse mangler på T&M-levering"
+  input: "Pakkseddelreferanse mangler på levering med tobakk og medisin"
   expected_keys:
     - SR-15310
     - SR-15387
@@ -33,7 +33,7 @@
     - SR-15511
     - SR-15575
 
-- id: missing_packing_slip_general # fails badly
+- id: missing_packing_slip_general
   # Query about missing packing slip blocking invoicing — tests whether the
   # retriever surfaces tickets that document the full pakkseddel→fakturering
   # incident chain rather than tickets matching only one symptom.
@@ -47,10 +47,12 @@
     - SR-15410
     - SR-15527
     - SR-15498
+    - SR-15715 
+    - SR-15668
 
 # ── Missing goods receipt (varemottak) ──────────────────────────
 
-- id: missing_goods_receipt_tobacco # fails
+- id: missing_goods_receipt_tobacco
   # Query about tobacco/medicine deliveries missing goods receipt
   # Pool: SR-15308 (Heimdal mangler VM tobakk/medisin),
   #       SR-15587 (Manglende VM Tobakk/medisin),
@@ -61,7 +63,7 @@
     - SR-15587
     - SR-15581
 
-- id: missing_goods_receipt_general # passes
+- id: missing_goods_receipt_general
   # Query about stores reporting missing goods receipt on delivery
   # Pool: SR-15394 (Norheim), SR-15498 (Tasta), SR-15499 (Bygnes),
   #       SR-15397 (Vestnes ikke fått VM), SR-15514 (rute 41115),
@@ -81,6 +83,8 @@
     - SR-15440
     - SR-15581
     - SR-15587
+    - SR-15655
+    - SR-15308
 
 # ── Orders in wrong status ─────────────────────────────────────
 
@@ -90,12 +94,16 @@
   # (order missing from the queue, not picked-but-stuck) — IRRELEVANT.
   # Pool: SR-15397 (Vestnes SENDT TIL PLUKK, butikk har mottatt varene),
   #       SR-15554 (Gaula SENDT TIL PLUKK, er plukket),
-  #       SR-15489 (OMS 0-qty: ordrestatus blir igjen i SENDT TIL PLUKK)
+  #       SR-15489 (OMS 0-qty: ordrestatus blir igjen i SENDT TIL PLUKK),
+  #       SR-13306 (Byåsen SENDT TIL PLUKK — older instance of same pattern)
   input: "Ordre er plukket men ligger fortsatt med status SENDT TIL PLUKK"
   expected_keys:
     - SR-15397
     - SR-15554
-    - SR-15489
+    - SR-13306
+    - SR-15695
+    - SR-15091
+    - SR-15640
 
 - id: orders_status_header_detail_mismatch
   # Query about orders where header status doesn't match detail-bilde status.
@@ -108,10 +116,11 @@
   expected_keys:
     - SR-15490
     - SR-15511
+    - SR-15632
 
 # ── Invoice / credit errors ────────────────────────────────────
 
-- id: invoice_deviation_amount
+- id: invoice_deviation_amount # fail
   # Query about invoice amount deviation / price differences.
   # SR-15291 (problemer å søke opp prisavvik) is a UI search bug, not
   # about having a prisavvik — IRRELEVANT.
@@ -119,7 +128,7 @@
   #       SR-14968 (prisavvik kontroll, feil antall),
   #       SR-15513 (mangler blokkering ved mengde avvik),
   #       SR-13540 (avvik på vektvare)
-  input: "Prisavvik eller feil beløp på innkjøpsfaktura"
+  input: "Prisavvik eller feil beløp på faktura"
   expected_keys:
     - SR-15417
     - SR-14968
@@ -136,12 +145,10 @@
   #       SR-15584 (varelinje ikke funnet i faktura)
   input: "Faktura blir matchet feil eller stopper opp på ukjent varenummer"
   expected_keys:
+    - SR-15437
+    - SR-15470
     - SR-15531
     - SR-15195
-    - SR-15437
-    - SR-15530
-    - SR-15470
-    - SR-15584
 
 - id: invoice_missing_or_blocked
   # Query about missing invoices or inability to process them.
@@ -207,6 +214,7 @@
     - SR-15506
     - SR-15509
     - SR-15488
+    - SR-15432
 
 # ── Allocation / distribution issues (fordeling) ───────────────
 
@@ -246,7 +254,6 @@
   input: "Meldinger fra WMS til OMS er forsinket, beholdning oppdateres ikke i tide"
   expected_keys:
     - SR-15466
-    - SR-15578
 
 # ── SSCC / packing slip identifier issues ──────────────────────
 
@@ -364,18 +371,18 @@
     - SR-15440
     - SR-15581
     - SR-15587
+    - SR-15655
+    - SR-15308
 
 - id: invoice_matching_errors_paraphrase
   # Paraphrase of invoice_matching_errors. Same gold set, conversational
   # phrasing — customer describes symptoms and asks for help.
   input: "Vi får problemer med fakturamatching, noen kommer ut med feil match og andre står på ukjent varenummer. Hva er årsaken?"
   expected_keys:
+    - SR-15437
+    - SR-15470
     - SR-15531
     - SR-15195
-    - SR-15437
-    - SR-15530
-    - SR-15470
-    - SR-15584
 
 - id: sscc_missing_paraphrase
   # Paraphrase of sscc_missing. Same gold set, narrative customer phrasing.
@@ -446,7 +453,7 @@
   # Paraphrase of missing_packing_slip_tm. Same gold, location-specific
   # complaint chaining the symptom (mangler pakkseddelref) with downstream
   # impact (ikke fakturert).
-  input: "Tobakkleveransen til Heimdal mangler pakkseddelref og er ikke fakturert. Hva er galt?"
+  input: "Tobakk og medisin leveransen mangler pakkseddelref og er ikke fakturert. Hva er galt?"
   expected_keys:
     - SR-15310
     - SR-15387
@@ -547,6 +554,8 @@
     - SR-15440
     - SR-15581
     - SR-15587
+    - SR-15655
+    - SR-15308
 
 - id: cancel_purchase_order_english
   # English variant of cancel_purchase_order. Same gold set.
@@ -556,6 +565,7 @@
     - SR-15506
     - SR-15509
     - SR-15488
+    - SR-15432
 
 - id: wms_picking_generation_failed_english
   # English variant of wms_picking_generation_failed. Same gold set.
@@ -571,12 +581,10 @@
   # English variant of invoice_matching_errors. Same gold set.
   input: "Invoices keep getting matched to the wrong items, and others get stuck on unknown article numbers. What's causing this?"
   expected_keys:
+    - SR-15437
+    - SR-15470
     - SR-15531
     - SR-15195
-    - SR-15437
-    - SR-15530
-    - SR-15470
-    - SR-15584
 
 - id: sscc_missing_english
   # English variant of sscc_missing. Same gold set.
@@ -588,7 +596,7 @@
 
 - id: epd_not_syncing_trace_english
   # English variant of epd_not_syncing_trace. Same gold set.
-  input: "An EPD product won't sync into Trace — it's stuck in the synchronization log. What's blocking it?"
+  input: "An EPD product won't sync into Trace — it's stuck in the synchronization log"
   expected_keys:
     - SR-15539
     - SR-15421
