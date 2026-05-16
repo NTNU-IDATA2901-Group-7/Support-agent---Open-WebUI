@@ -83,7 +83,7 @@ def tool_hyperparameters() -> dict:
 def load_yaml(filename: str) -> list[dict]:
     """Load a YAML file from the test/cases/ directory and return the list of test cases.
 
-    Test files call this to load their ground-truth data, e.g. load_yaml("correctness.yaml").
+    Test files call this to load their ground-truth data, e.g. load_yaml("docs_correctness.yaml").
     Each YAML file contains a list of dicts with fields like id, input, expected_output, etc.
     """
     path = CASES / filename

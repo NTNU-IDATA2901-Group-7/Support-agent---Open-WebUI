@@ -1,8 +1,8 @@
 """
-End-to-end correctness — agent responses are checked against gold reference
-answers derived from the Confluence knowledge base.
+End-to-end docs correctness — agent responses are checked against gold
+reference answers derived from the Confluence knowledge base.
 
-Cases are defined in cases/correctness.yaml.
+Cases are defined in cases/docs_correctness.yaml.
 To add a test: edit the YAML. No Python changes needed.
 """
 
@@ -23,7 +23,7 @@ from tests.conftest import (
 from tests.utils import agent_runner
 from tests.utils.judge_model import judge_model
 
-CASES = load_yaml("correctness.yaml")
+CASES = load_yaml("docs_correctness.yaml")
 
 
 @deepeval.log_hyperparameters
@@ -37,8 +37,8 @@ def hyperparameters():
     }
 
 
-correctness_metric = GEval(
-    name="Correctness",
+docs_correctness_metric = GEval(
+    name="Documentation Answer Correctness",
     model=judge_model,
     evaluation_steps=[
         "Identify the key facts in the expected output: specific numbers, "
@@ -62,7 +62,7 @@ correctness_metric = GEval(
 
 
 @pytest.mark.parametrize("case", CASES, ids=[c["id"] for c in CASES])
-def test_correctness(case: dict):
+def test_docs_correctness(case: dict):
     result = agent_runner.run(case["input"])
 
     test_case = LLMTestCase(
@@ -70,4 +70,4 @@ def test_correctness(case: dict):
         actual_output=result.answer,
         expected_output=case["expected_output"],
     )
-    assert_test(test_case, [correctness_metric])
+    assert_test(test_case, [docs_correctness_metric])

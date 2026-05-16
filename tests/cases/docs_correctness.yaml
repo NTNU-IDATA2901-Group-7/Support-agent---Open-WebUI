@@ -101,7 +101,7 @@
 # --- RACI ---
 
 - id: raci_major_incident_escalation
-  input: "Who is responsible and accountable for escalating a case to Major Incident?"
+  input: "What is the full RACI matrix for escalating to a Major Incident?"
   expected_output: >
     The on-call responder is Responsible (R) for escalating to Major Incident.
     The Incident Manager is Accountable (A/R). 2nd line and 3rd line are
