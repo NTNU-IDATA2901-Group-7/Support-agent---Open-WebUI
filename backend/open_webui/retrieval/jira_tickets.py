@@ -43,13 +43,15 @@ JIRA_TICKET_FETCH_LIMIT = 300
 JIRA_PAGE_SIZE = 100  # /search/jql caps each response at 100 regardless of maxResults
 
 
-async def fetch_jira_tickets() -> list[dict]:
+async def fetch_jira_tickets(jql: str | None = None) -> list[dict]:
     """
-    Fetch the most recently updated Jira tickets for the configured project and return as a list of dicts.
+    Fetch Jira tickets for the configured project and return as a list of dicts.
 
     Paginates using nextPageToken until JIRA_TICKET_FETCH_LIMIT is reached or no further pages remain.
+    By default fetches the most recently updated tickets; pass a custom `jql` to override.
     """
-    jql = f"project = {JIRA_PROJECT_KEY} ORDER BY updated DESC"
+    if jql is None:
+        jql = f"project = {JIRA_PROJECT_KEY} ORDER BY updated DESC"
 
     log.info("Fetching jira tickets")
     tickets: list[dict] = []
@@ -112,9 +114,9 @@ async def fetch_jira_tickets() -> list[dict]:
 # =================================================================================
 
 
-async def sync_jira_tickets():
+async def sync_jira_tickets(jql: str | None = None):
     """Core sync logic: fetch tickets, deduplicate, embed, upsert. Used by endpoint and poller."""
-    tickets = await fetch_jira_tickets()
+    tickets = await fetch_jira_tickets(jql=jql)
     fetched_ids = {t["id"] for t in tickets}
 
     pgVectorClient = PgvectorClient()
@@ -140,12 +142,6 @@ async def sync_jira_tickets():
             or format_jira_ticket_for_embedding(t) != existing_docs[t["id"]]
         ):
             tickets_to_upsert.append(t)
-
-    # Reconcile: remove tickets that no longer exist in Jira (deleted or moved out of scope)
-    stale_ids = list(set(existing_docs.keys()) - fetched_ids)
-    if stale_ids:
-        pgVectorClient.delete(collection_name=JIRA_COLLECTION, ids=stale_ids)
-        log.info(f"Deleted {len(stale_ids)} stale tickets from vector DB")
 
     JIRA_LAST_SYNCED_AT.value = datetime.now().isoformat()
     JIRA_LAST_SYNCED_AT.save()
@@ -200,7 +196,6 @@ async def sync_jira_tickets():
 
     log.info(
         f"Synced JIRA tickets: {len(tickets_to_upsert)} upserted, "
-        f"{len(stale_ids)} stale deleted, "
         f"{len(fetched_ids) - len(tickets_to_upsert)} unchanged"
     )
     return len(tickets_to_upsert)
