@@ -29,6 +29,7 @@ RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "10"))
 RAG_TOP_K_RERANKER = int(os.environ.get("RAG_TOP_K_RERANKER", "3"))
 RAG_HYBRID_BM25_WEIGHT = float(os.environ.get("RAG_HYBRID_BM25_WEIGHT", "0.5"))
 RAG_SIMILARITY_CUTOFF = float(os.environ.get("RAG_SIMILARITY_CUTOFF", "0.5"))
+RAG_USE_RERANKER = os.environ.get("RAG_USE_RERANKER", "true").lower() == "true"
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_API_BASE_URL = os.environ.get("OPENAI_API_BASE_URL")
@@ -118,7 +119,7 @@ async def search_vector_db_for_similar_jira_tickets(
     """
     log.info(f"Performing hybrid search for: '{search_text}'")
     log.info(
-        f"RAG_HYBRID_BM25_WEIGHT={RAG_HYBRID_BM25_WEIGHT}, RAG_TOP_K={RAG_TOP_K}, RAG_TOP_K_RERANKER={RAG_TOP_K_RERANKER}, RAG_SIMILARITY_CUTOFF={RAG_SIMILARITY_CUTOFF}, RAG_RERANKING_MODEL={RAG_RERANKING_MODEL}"
+        f"RAG_HYBRID_BM25_WEIGHT={RAG_HYBRID_BM25_WEIGHT}, RAG_TOP_K={RAG_TOP_K}, RAG_TOP_K_RERANKER={RAG_TOP_K_RERANKER}, RAG_SIMILARITY_CUTOFF={RAG_SIMILARITY_CUTOFF}, RAG_USE_RERANKER={RAG_USE_RERANKER}, RAG_RERANKING_MODEL={RAG_RERANKING_MODEL if RAG_USE_RERANKER else '<disabled>'}"
     )
     pgVectorClient = PgvectorClient()
     extra_params = {
@@ -151,7 +152,7 @@ async def search_vector_db_for_similar_jira_tickets(
         query=search_text,
         embedding_function=embedding_function,
         k=top_k,
-        reranking_function=_get_reranking_function(),
+        reranking_function=_get_reranking_function() if RAG_USE_RERANKER else None,
         k_reranker=top_k_reranker,
         r=similarity_cutoff,
         hybrid_bm25_weight=RAG_HYBRID_BM25_WEIGHT,

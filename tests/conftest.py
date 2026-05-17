@@ -66,6 +66,7 @@ def rag_hyperparameters() -> dict:
         "rag_top_k": os.getenv("RAG_TOP_K", "10"),
         "rag_top_k_reranker": os.getenv("RAG_TOP_K_RERANKER", "5"),
         "rag_hybrid_bm25_weight": os.getenv("RAG_HYBRID_BM25_WEIGHT", "0.25"),
+        "rag_use_reranker": os.getenv("RAG_USE_RERANKER", "true"),
     }
 
 
