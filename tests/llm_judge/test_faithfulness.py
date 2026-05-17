@@ -72,7 +72,7 @@ def test_faithfulness(case: dict):
         input=case["input"],
         actual_output=result.answer,
         retrieval_context=retrieval_context,
-        additional_metadata={"category": classify_retrieval_case(case["id"])},
+        tags=[classify_retrieval_case(case["id"])],
     )
 
     faithfulness_metric.measure(test_case)

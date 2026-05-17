@@ -221,7 +221,7 @@ def test_retrieval(case: dict):
             actual_output=", ".join(retrieved_keys) if retrieved_keys else "<none>",
             expected_output="<none>",
             retrieval_context=retrieved_keys or ["<none>"],
-            additional_metadata={"category": category},
+            tags=[category],
         )
         metric = PrecomputedMetric(
             name="NoRetrievalExpected",
@@ -280,7 +280,7 @@ def test_retrieval(case: dict):
         actual_output=", ".join(top_k) if top_k else "<none>",
         expected_output=", ".join(sorted(expected_keys)),
         retrieval_context=retrieved_keys or ["<none>"],
-        additional_metadata={"category": category},
+        tags=[category],
     )
 
     precision_metric = PrecomputedMetric(

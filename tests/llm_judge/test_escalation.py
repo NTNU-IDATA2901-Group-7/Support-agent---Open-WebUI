@@ -49,6 +49,6 @@ def test_escalation(case: dict):
     test_case = LLMTestCase(
         input=case["input"],
         actual_output=result.answer,
-        additional_metadata={"urgency": case["urgency"]},
+        tags=[case["urgency"]],
     )
     assert_test(test_case, [_escalation_metric(case["criteria"])])
