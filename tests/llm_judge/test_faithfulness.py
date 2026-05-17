@@ -2,21 +2,44 @@
 Faithfulness — checks that the agent's answer is grounded in the retrieved
 context and does not hallucinate facts beyond what was provided.
 
-Uses retrieval test cases which trigger the vector search tool. The
-retrieval context is extracted from tool call results (not knowledge base
-sources) since these tests run without pre-injected files.
+Cases in cases/faithfulness.yaml are a curated subset of customer-style
+queries spanning different retrieval shapes (large clusters, small
+clusters, English, and negative cases where nothing relevant exists).
+Retrieval context is extracted from tool call results at runtime — no
+gold is needed.
 """
 
+import deepeval
 import pytest
 from deepeval import assert_test
 from deepeval.metrics import FaithfulnessMetric
 from deepeval.test_case import LLMTestCase
 
-from tests.conftest import load_yaml
+from tests.conftest import (
+    AGENT_MODEL,
+    SYSTEM_PROMPT,
+    common_hyperparameters,
+    load_yaml,
+    rag_hyperparameters,
+    tool_hyperparameters,
+)
 from tests.utils import agent_runner
+from tests.utils.categorize import classify_retrieval_case
 from tests.utils.judge_model import judge_model
 
-CASES = load_yaml("retrieval.yaml")
+CASES = load_yaml("faithfulness.yaml")
+
+
+@deepeval.log_hyperparameters
+def hyperparameters():
+    return {
+        "model": AGENT_MODEL,
+        "prompt_template": SYSTEM_PROMPT,
+        **common_hyperparameters(),
+        **rag_hyperparameters(),
+        **tool_hyperparameters(),
+    }
+
 
 faithfulness_metric = FaithfulnessMetric(
     model=judge_model,
@@ -49,6 +72,7 @@ def test_faithfulness(case: dict):
         input=case["input"],
         actual_output=result.answer,
         retrieval_context=retrieval_context,
+        tags=[classify_retrieval_case(case["id"])],
     )
 
     faithfulness_metric.measure(test_case)

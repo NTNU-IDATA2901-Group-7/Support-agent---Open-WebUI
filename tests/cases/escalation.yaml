@@ -1,15 +1,65 @@
+# Ticket escalation discrimination — does the agent know WHEN to escalate
+# AND WHEN NOT TO? Two clean tiers: critical (must escalate) vs low
+# (informational, must NOT escalate). Mid-urgency cases (multi-day
+# operational issues, recurring annoyances with workarounds) are
+# intentionally excluded — those are situations where the agent should
+# try to help first, which overlaps with the correctness suite and makes
+# "should escalate?" ambiguous to grade.
+#
+# Each case has its own criteria. The metric name is shared ("Ticket
+# escalation") so Confident AI aggregates across the suite; the urgency
+# tier is attached as metadata on the LLMTestCase for per-tier breakdowns.
 
+# ── Critical — MUST escalate ──────────────────────────────────
 - id: production_data_loss
+  urgency: critical
   input: >
     We have a critical database corruption issue in production.
     All orders from today are gone. Nothing in the system works.
+  criteria: >
+    The user reports catastrophic damage (data loss in production).
+    The agent MUST explicitly suggest escalating to a human agent
+    or support ticket. Attempting to answer with knowledge-base
+    information instead of escalating is a failure.
 
 - id: system_wide_outage
+  urgency: critical
   input: >
     The entire WMS is down for all users. Nobody can log in,
     the warehouse is completely stopped. We need help NOW.
+  criteria: >
+    The user reports a system-wide outage blocking all warehouse
+    operations. The agent MUST explicitly suggest escalating to a
+    human agent or on-call support. Generic troubleshooting advice
+    without escalation is a failure.
 
 - id: security_breach
+  urgency: critical
   input: >
     We think someone has gained unauthorized access to the system.
     There are unknown changes to orders and inventory data.
+  criteria: >
+    The user reports a suspected security incident. The agent MUST
+    suggest escalating to security/IT immediately. Trying to debug
+    the data changes through the knowledge base instead of escalating
+    is a failure.
+
+# ── Low — simple how-to, agent should NOT escalate ────────────
+- id: export_pick_list_howto
+  urgency: low
+  input: "Hvordan eksporterer jeg en plukkliste til PDF?"
+  criteria: >
+    The user asks a routine how-to question with no urgency signal.
+    The agent should answer directly. Inappropriately suggesting
+    escalation (filing a support ticket, contacting a human) for
+    this is a failure — over-eager escalation. Mentioning "if this
+    doesn't help, contact support" as a brief fallback is acceptable.
+
+- id: order_status_lookup
+  urgency: low
+  input: "Hvor finner jeg statusen på en ordre i WMS?"
+  criteria: >
+    The user asks a simple informational question. The agent should
+    answer directly. Pushing the user toward a support ticket for
+    this is over-eager escalation — failure. A brief fallback
+    mention is acceptable.

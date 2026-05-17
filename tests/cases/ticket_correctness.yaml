@@ -1,0 +1,160 @@
+# Ticket-grounded correctness — given a customer-style query, does the agent
+# produce the actual resolution documented in the support ticket(s)?
+#
+# Each case has a Norwegian customer-style query, the SR key(s) carrying the
+# resolution (used for per-case retrieval attribution on the dashboard), and
+# an English gold answer summarizing the documented fix.
+#
+# Two flavours of case:
+#   - Deployed-fix cases: gold names the concrete cause and the deployed fix.
+#     Agent should state both.
+#   - Hedge cases: cached solution explicitly says no fix is deployed yet
+#     (planned / under investigation / workaround only). Gold reflects that
+#     state. The agent must honestly report "no fix deployed yet" rather
+#     than invent a plausible-sounding resolution. These exist to catch
+#     hallucinated fixes.
+
+- id: voice_user_login_fails
+  input: "Ny voicebruker får ikke logget på — ingenting skjer når han prøver. Hva kan det være?"
+  expected_keys:
+    - SR-15557
+  expected_output: >
+    The operator ID in the voice console was still linked to the old user.
+    Update the operator ID for the new user in the voice console, then
+    reload the voice system — the user should be able to log in after that.
+
+- id: po_cancel_after_order_confirmed
+  input: "Vi får ikke kansellert en innkjøpsordre som ligger med status ORDRE BEKREFTET. Er det en begrensning her?"
+  expected_keys:
+    - SR-15488
+    - SR-15555
+    - SR-15506
+  expected_output: >
+    Previously, purchase orders could only be cancelled up to "Registered"
+    status. The rule has been changed so purchase orders can now be
+    cancelled up to and including "Order Confirmed". The change is
+    deployed; manual cancellation should now work for that status.
+
+- id: sscc_missing_split_pallet
+  input: "SSCC på en pall mangler på pakkseddelen til butikken — pallen ble splittet i WMS. Hva er greia?"
+  expected_keys:
+    - SR-14998
+  expected_output: >
+    Split pallets created in WMS were not always assigned a pallet type,
+    which caused those SSCCs to be excluded from the packing slip. The
+    platform was updated to no longer require pallet type to include
+    pallets on the packing slip (fixed). A follow-up WMS fix is planned
+    to ensure split pallets always get a pallet type assigned at source.
+
+- id: epd_not_syncing_gtin_conflict
+  input: "Vi har en ny EPD-vare som ikke kommer over i Trace — den deler GTIN med en eksisterende vare. Hva gjør vi?"
+  expected_keys:
+    - SR-15539
+  expected_output: >
+    GTIN conflicts block sync. Change the GTIN on the existing/old
+    product (for example, append "-001") to remove the conflict, then
+    manually trigger an update of the product file — the system does
+    not automatically retry syncing the new product after the conflict
+    is resolved.
+
+- id: wrong_price_across_distros
+  input: "Vi ser feil pris på et par EPD-varer i alle distribunaler. Hva kan være galt?"
+  expected_keys:
+    - SR-15497
+  expected_output: >
+    The site price was linked to an outdated price calculation instead
+    of the currently active one, so the wrong price was applied across
+    all distributors. The cause has been identified but no fix has been
+    deployed yet — the team is actively working on correcting it.
+
+- id: kjol_priority_threshold
+  input: "Nesten alle kjøl-ordre får prioritet 2 i stedet for prioritet 3 — distinkten har forsvunnet. Vet dere hva som er galt?"
+  expected_keys:
+    - SR-15441
+  expected_output: >
+    Priority calculation used strict less-than against the cutoff date,
+    while the reservation period logic included the cutoff (less-than-
+    or-equal). The mismatch caused refrigerated orders to be assigned
+    priority 2 instead of 3. The proposed fix is to align the priority
+    check to use less-than-or-equal, and ideally to recalculate priority
+    when the order moves from Registered to Reserved using the confirmed
+    pick date from transport booking. The fix is acknowledged and
+    planned but no implementation date has been set.
+
+- id: crossdock_lines_not_updated_from_po
+  input: "Crossdock-ordrer oppdateres ikke riktig fra innkjøpsordre når kvantum endres eller settes til null — feil status og antall. Kjent problem?"
+  expected_keys:
+    - SR-15389
+    - SR-15575
+  expected_output: >
+    Yes, this affected crossdock orders whose packing slip was received
+    before the fix deployed on 21 April. A system fix is now live across
+    all distribution centres so new crossdock orders no longer end up in
+    the wrong reserved status. Affected orders were identified and
+    corrected manually (status and quantity updated, packing slip
+    reprocessed). The issue is resolved.
+
+- id: wms_oms_message_backlog
+  input: "Vi ser forsinkelser i meldinger fra WMS til OMS — beholdning oppdateres ikke i tide og varer får tildelt for lite"
+  expected_keys:
+    - SR-15466
+  expected_output: >
+    The system was re-fetching the same information for every event from
+    WMS even when nothing had changed, which built up a queue it could
+    not drain fast enough during busy periods. The fix lets the system
+    reuse previously fetched information, improving processing speed by
+    3-4×. After deployment the queue normalized within about an hour.
+    Rolled out first in Trondheim; Narvik and Bergen are planned next.
+    Further improvements toward a more permanent solution are still in
+    development.
+
+- id: zero_qty_lines_stuck_in_pick
+  input: "OMS sender ordrelinjer med 0 kvantum til plukk, og ordrestatus oppdaterer seg ikke. Hva skjer?"
+  expected_keys:
+    - SR-15489
+  expected_output: >
+    Zero-quantity lines are marked "Sent to pick" in WMS, but WMS only
+    sends updates for lines it actually picks, so zero-quantity lines
+    stay stuck in that status. The auto-cancel logic that would normally
+    cancel an order when all lines are zero-picked does not trigger
+    while any line is still in "Sent to pick". The issue is acknowledged
+    and under investigation; no fix has been deployed yet.
+
+- id: tms_route_assignment_delay
+  input: "Ordre 1010149455 har ikke fått tildelt tur i TMS — det har gått 10 minutter. Er dette en kjent forsinkelse?"
+  expected_keys:
+    - SR-15534
+  expected_output: >
+    Delays of up to about 10 minutes before TMS trip assignment have
+    been reported previously and flagged to the development team.
+    Adjustments have been made, and affected orders were eventually
+    assigned trips. The issue may still be under monitoring — if
+    similar delays recur, the team can investigate further.
+
+- id: fair_distribution_over_allocates
+  input: "Vi opplever at systemet fordeler kampanjevarer på nytt selv om vi har nok varer på lager — noen ordre får ikke det de skulle"
+  expected_keys:
+    - SR-15076
+  expected_output: >
+    The Fair Distribution job allocates stock based on order status at a
+    specific moment. Orders that have progressed past "Reserved" status
+    are excluded from reallocation, and timing/status mismatches between
+    Witron (WMS) and OMS during picking can cause some orders to lose
+    their full quantities even when stock is available. No final fix has
+    been deployed yet — the team is monitoring new distribution runs
+    against updated system versions. A temporary workaround of "faking"
+    stock availability has been used to prevent unnecessary
+    reallocations during picking.
+
+- id: bulk_import_wrong_delivery_day
+  input: "Ordre vi importerer via bulk havner på feil leveringsdag — finnes det en fiks for dette, eller må vi gjøre noe selv?"
+  expected_keys:
+    - SR-15419
+  expected_output: >
+    Bulk imports set the desired delivery time to 23:59 on the chosen
+    day, which causes the transport system (TMS) to treat the delivery
+    as scheduled for the next day. Regular orders use the current time,
+    avoiding the problem. The planned fix is to change bulk imports to
+    use the current time (or 00:00) on the delivery day, but this fix
+    is not yet deployed. Until then, the recommended workaround is to
+    set the delivery date one day earlier in the bulk import.

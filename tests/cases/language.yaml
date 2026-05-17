@@ -24,3 +24,10 @@
 - id: login_problem_english
   input: "I can't log into the portal, what do I do?"
   expected_language: English
+
+# English query containing Norwegian domain terms — agent should still respond
+# in English. Norwegian technical vocab in the query must not pull the response
+# language over.
+- id: english_with_norwegian_terms
+  input: "Can you walk me through what to do when SSCC scanning fails during varemottak?"
+  expected_language: English

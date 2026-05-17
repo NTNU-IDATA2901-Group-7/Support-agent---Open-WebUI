@@ -31,3 +31,7 @@
 
 - id: system_issue_no_context
   input: "The system crashed"
+
+# ── Ambiguous pronoun reference — no antecedent ──────────────
+- id: ambiguous_reference_no_antecedent
+  input: "Kan du sjekke om den fortsatt er åpen?"

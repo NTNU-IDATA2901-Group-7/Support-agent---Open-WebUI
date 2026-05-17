@@ -1,9 +1,0 @@
-
-- id: barcode_scanner_setup
-  input: "Hvordan setter jeg opp en ny strekkodeskanner i WMS?"
-
-- id: export_pick_list_pdf
-  input: "Kan jeg eksportere en plukkliste som PDF?"
-
-- id: reset_password
-  input: "Jeg har glemt passordet mitt, hva gjør jeg?"

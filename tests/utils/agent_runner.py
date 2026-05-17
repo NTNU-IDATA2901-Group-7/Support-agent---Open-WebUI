@@ -276,7 +276,7 @@ def run(query: str, include_files: bool = True) -> AgentResult:
             "chat_id": chat_id,
             "id": message_id,
             "session_id": str(uuid4()),
-            "params": {"function_calling": "native"},
+            "params": {"function_calling": "native", "temperature": 0},
         }
 
         if include_files:
