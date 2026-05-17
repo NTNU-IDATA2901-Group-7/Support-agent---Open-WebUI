@@ -140,6 +140,13 @@ async def search_vector_db_for_similar_jira_tickets_tool(
     Norwegian. Translate the user's problem to Norwegian before calling
     this tool, regardless of what language the user wrote in.
 
+    Query construction guidelines:
+    - Prefer concise keyword/noun-phrase style over full sentences.
+    - Strip incidental context and question framing: customer names, dates,
+      user emotion, narrative, and help-seeking phrases ("hva gjør jeg",
+      "hjelp", "hva er årsaken", "hvorfor", "hva er galt"). Tickets describe
+      symptoms, not questions - the query should too.
+
     When to use: User asks about existing tickets, bug reports, or similar issues.
     Output: List of similar tickets with keys, summaries, status, and similarity scores.
 
