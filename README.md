@@ -150,50 +150,50 @@ The `.env.example` file contains the required variables with placeholder values.
 
 ### Azure OpenAI
 
-| Variable | Description |
-| --- | --- |
-| `OPENAI_API_KEY` | API key for Azure OpenAI |
-| `OPENAI_API_BASE_URL` | Azure OpenAI deployment endpoint for the chat model |
-| `RAG_AZURE_OPENAI_API_KEY` | API key for the embedding model. This can be the same as `OPENAI_API_KEY` |
-| `RAG_AZURE_OPENAI_BASE_URL` | Azure OpenAI base URL for embeddings |
-| `RAG_AZURE_OPENAI_API_VERSION` | Azure OpenAI API version, for example `2024-12-01-preview` |
+| Variable                       | Description                                                               |
+| ------------------------------ | ------------------------------------------------------------------------- |
+| `OPENAI_API_KEY`               | API key for Azure OpenAI                                                  |
+| `OPENAI_API_BASE_URL`          | Azure OpenAI deployment endpoint for the chat model                       |
+| `RAG_AZURE_OPENAI_API_KEY`     | API key for the embedding model. This can be the same as `OPENAI_API_KEY` |
+| `RAG_AZURE_OPENAI_BASE_URL`    | Azure OpenAI base URL for embeddings                                      |
+| `RAG_AZURE_OPENAI_API_VERSION` | Azure OpenAI API version, for example `2024-12-01-preview`                |
 
 ### Microsoft Entra ID
 
-| Variable | Description |
-| --- | --- |
-| `MICROSOFT_CLIENT_ID` | Application/client ID from the Microsoft Entra ID app registration |
-| `MICROSOFT_CLIENT_SECRET` | Client secret from the Microsoft Entra ID app registration |
-| `MICROSOFT_CLIENT_TENANT_ID` | Tenant ID of the Microsoft organization |
-| `OPENID_PROVIDER_URL` | OpenID configuration URL for the Microsoft tenant |
+| Variable                     | Description                                                        |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `MICROSOFT_CLIENT_ID`        | Application/client ID from the Microsoft Entra ID app registration |
+| `MICROSOFT_CLIENT_SECRET`    | Client secret from the Microsoft Entra ID app registration         |
+| `MICROSOFT_CLIENT_TENANT_ID` | Tenant ID of the Microsoft organization                            |
+| `OPENID_PROVIDER_URL`        | OpenID configuration URL for the Microsoft tenant                  |
 
 ### Jira Integration
 
-| Variable | Description |
-| --- | --- |
-| `JIRA_DOMAIN` | Atlassian domain, for example `yourcompany.atlassian.net` |
-| `JIRA_CLOUD_ID` | Jira cloud ID, found at `https://<your-domain>/_edge/tenant_info` |
-| `JIRA_PROJECT_KEY` | Jira project key where support tickets are created |
-| `JIRA_SERVICE_ACCOUNT_EMAIL` | Email of the Jira service account used for synchronization |
-| `JIRA_SERVICE_ACCOUNT_API_TOKEN` | API token for the Jira service account |
-| `ATLASSIAN_CLIENT_ID` | OAuth 2.0 client ID from the Atlassian developer console |
-| `ATLASSIAN_CLIENT_SECRET` | OAuth 2.0 client secret |
-| `ATLASSIAN_REDIRECT_URI` | OAuth callback URL, for example `http://localhost:8080/oauth/atlassian/callback` |
+| Variable                         | Description                                                                      |
+| -------------------------------- | -------------------------------------------------------------------------------- |
+| `JIRA_DOMAIN`                    | Atlassian domain, for example `yourcompany.atlassian.net`                        |
+| `JIRA_CLOUD_ID`                  | Jira cloud ID, found at `https://<your-domain>/_edge/tenant_info`                |
+| `JIRA_PROJECT_KEY`               | Jira project key where support tickets are created                               |
+| `JIRA_SERVICE_ACCOUNT_EMAIL`     | Email of the Jira service account used for synchronization                       |
+| `JIRA_SERVICE_ACCOUNT_API_TOKEN` | API token for the Jira service account                                           |
+| `ATLASSIAN_CLIENT_ID`            | OAuth 2.0 client ID from the Atlassian developer console                         |
+| `ATLASSIAN_CLIENT_SECRET`        | OAuth 2.0 client secret                                                          |
+| `ATLASSIAN_REDIRECT_URI`         | OAuth callback URL, for example `http://localhost:8080/oauth/atlassian/callback` |
 
 ### Database
 
-| Variable | Description |
-| --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string |
+| Variable          | Description                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`    | PostgreSQL connection string                                                                 |
 | `PGVECTOR_DB_URL` | PostgreSQL connection string for the vector database. This can be the same as `DATABASE_URL` |
 
 ### Testing
 
-| Variable | Description |
-| --- | --- |
-| `OPEN_WEBUI_EMAIL` | Test account email used by the agent test runner |
-| `OPEN_WEBUI_PASSWORD` | Test account password |
-| `TEST_TICKET_KEY` | Known Jira ticket key used by deterministic smoke tests, for example `SR-1` |
+| Variable              | Description                                                                 |
+| --------------------- | --------------------------------------------------------------------------- |
+| `OPEN_WEBUI_EMAIL`    | Test account email used by the agent test runner                            |
+| `OPEN_WEBUI_PASSWORD` | Test account password                                                       |
+| `TEST_TICKET_KEY`     | Known Jira ticket key used by deterministic smoke tests, for example `SR-1` |
 
 ---
 
