@@ -7,6 +7,7 @@
 	import { goto } from '$app/navigation';
 
 	import { updateUserById, getUserGroupsById } from '$lib/apis/users';
+	import { WEBUI_API_BASE_URL } from '$lib/constants';
 
 	import Modal from '$lib/components/common/Modal.svelte';
 	import localizedFormat from 'dayjs/plugin/localizedFormat';
@@ -31,6 +32,7 @@
 			_user = selectedUser;
 			_user.password = '';
 			loadUserGroups();
+			loadJiraConnection();
 		}
 	};
 
@@ -43,6 +45,7 @@
 	};
 
 	let userGroups: any[] | null = null;
+	let jiraConnection: any = null;
 
 	const submitHandler = async () => {
 		const res = await updateUserById(localStorage.token, selectedUser.id, _user).catch((error) => {
@@ -63,6 +66,22 @@
 			toast.error(`${error}`);
 			return null;
 		});
+	};
+
+	const loadJiraConnection = async () => {
+		if (!selectedUser?.id) return;
+		jiraConnection = null;
+		try {
+			const response = await fetch(
+				`${WEBUI_API_BASE_URL}/auths/admin/jira/connection/${selectedUser.id}`,
+				{ headers: { Authorization: `Bearer ${localStorage.token}` } }
+			);
+			if (response.ok) {
+				jiraConnection = await response.json();
+			}
+		} catch (e) {
+			console.error('Failed to load JIRA connection:', e);
+		}
 	};
 </script>
 
@@ -194,6 +213,20 @@
 											</div>
 										</div>
 									{/if}
+
+									<div class="flex flex-col w-full">
+										<div class="mb-1 text-xs text-gray-500">{$i18n.t('Atlassian Connection')}</div>
+										<div class="flex-1 text-sm">
+											{#if jiraConnection?.connected}
+												<span class="text-green-600 dark:text-green-400">Connected</span>
+												<span class="text-gray-500 ml-1 text-xs"
+													>({jiraConnection.atlassian_account_id})</span
+												>
+											{:else}
+												<span class="text-gray-400">Not connected</span>
+											{/if}
+										</div>
+									</div>
 
 									<div class="flex flex-col w-full">
 										<div class=" mb-1 text-xs text-gray-500">{$i18n.t('New Password')}</div>

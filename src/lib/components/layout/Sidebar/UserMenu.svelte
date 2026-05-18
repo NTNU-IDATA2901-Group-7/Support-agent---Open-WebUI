@@ -79,8 +79,10 @@
 
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <DropdownMenu.Root bind:open={show} onOpenChange={handleDropdownChange}>
-	<DropdownMenu.Trigger>
-		<slot />
+	<DropdownMenu.Trigger class="w-full">
+		<div class="w-full">
+			<slot />
+		</div>
 	</DropdownMenu.Trigger>
 
 	<slot name="content">

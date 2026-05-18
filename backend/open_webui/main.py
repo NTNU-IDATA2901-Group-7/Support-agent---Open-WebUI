@@ -95,6 +95,11 @@ from open_webui.routers import (
     scim,
 )
 
+
+# Import JIRA router
+from open_webui.routers.jira import router as jira_router
+
+
 from open_webui.routers.retrieval import (
     get_embedding_function,
     get_reranking_function,
@@ -623,6 +628,10 @@ async def lifespan(app: FastAPI):
         limiter.total_tokens = THREAD_POOL_SIZE
 
     asyncio.create_task(periodic_usage_pool_cleanup())
+
+    from open_webui.retrieval.jira_tickets import poll_jira_loop
+
+    asyncio.create_task(poll_jira_loop())
 
     if app.state.config.ENABLE_BASE_MODELS_CACHE:
         await get_all_models(
@@ -1440,6 +1449,14 @@ app.include_router(
     evaluations.router, prefix="/api/v1/evaluations", tags=["evaluations"]
 )
 app.include_router(utils.router, prefix="/api/v1/utils", tags=["utils"])
+
+
+# =====================================================================
+# Added for support agent project
+# =====================================================================
+
+app.include_router(jira_router, prefix="/api/v1/jira", tags=["jira"])
+
 
 # SCIM 2.0 API for identity management
 if ENABLE_SCIM:
@@ -2338,13 +2355,13 @@ async def get_manifest_json():
             "background_color": "#343541",
             "icons": [
                 {
-                    "src": "/static/logo.png",
+                    "src": "/static/solwr.png",
                     "type": "image/png",
                     "sizes": "500x500",
                     "purpose": "any",
                 },
                 {
-                    "src": "/static/logo.png",
+                    "src": "/static/solwr.png",
                     "type": "image/png",
                     "sizes": "500x500",
                     "purpose": "maskable",
@@ -2365,7 +2382,7 @@ async def get_opensearch_xml():
     <ShortName>{app.state.WEBUI_NAME}</ShortName>
     <Description>Search {app.state.WEBUI_NAME}</Description>
     <InputEncoding>UTF-8</InputEncoding>
-    <Image width="16" height="16" type="image/x-icon">{app.state.config.WEBUI_URL}/static/favicon.png</Image>
+    <Image width="16" height="16" type="image/x-icon">{app.state.config.WEBUI_URL}/static/solwr.png</Image>
     <Url type="text/html" method="get" template="{app.state.config.WEBUI_URL}/?q={"{searchTerms}"}"/>
     <moz:SearchForm>{app.state.config.WEBUI_URL}</moz:SearchForm>
     </OpenSearchDescription>
@@ -2407,7 +2424,7 @@ def swagger_ui_html(*args, **kwargs):
         **kwargs,
         swagger_js_url="/static/swagger-ui/swagger-ui-bundle.js",
         swagger_css_url="/static/swagger-ui/swagger-ui.css",
-        swagger_favicon_url="/static/swagger-ui/favicon.png",
+        swagger_favicon_url="/static/swagger-ui/solwr.png",
     )
 
 

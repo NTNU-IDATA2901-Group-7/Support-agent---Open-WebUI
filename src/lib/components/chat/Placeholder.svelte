@@ -29,6 +29,8 @@
 	import FolderPlaceholder from './Placeholder/FolderPlaceholder.svelte';
 	import FolderTitle from './Placeholder/FolderTitle.svelte';
 
+	export let showJiraModal = false;
+
 	const i18n = getContext('i18n');
 
 	export let createMessagePair: Function;
@@ -122,7 +124,7 @@
 										}}
 									>
 										<img
-											src={`${WEBUI_API_BASE_URL}/models/model/profile/image?id=${model?.id}&lang=${$i18n.language}`}
+											src="{WEBUI_BASE_URL}/static/solwr.png"
 											class=" size-9 @sm:size-10 rounded-full border-[1px] border-gray-100 dark:border-none"
 											aria-hidden="true"
 											draggable="false"
@@ -137,9 +139,9 @@
 						class=" text-3xl @sm:text-3xl line-clamp-1 flex items-center"
 						in:fade={{ duration: 100 }}
 					>
-						{#if models[selectedModelIdx]?.name}
+						<!-- {#if models[selectedModelIdx]?.name}
 							<Tooltip
-								content={models[selectedModelIdx]?.name}
+								content={"models[selectedModelIdx]?.name"}
 								placement="top"
 								className=" flex items-center "
 							>
@@ -147,9 +149,12 @@
 									{models[selectedModelIdx]?.name}
 								</span>
 							</Tooltip>
-						{:else}
-							{$i18n.t('Hello, {{name}}', { name: $user?.name })}
-						{/if}
+						{:else} -->
+						<!-- <span class="line-clamp-1">
+								{"ReSolwr"}
+							</span> -->
+						{$i18n.t('Hello, {{name}}', { name: $user?.name })}
+						<!-- {/if} -->
 					</div>
 				</div>
 
@@ -197,6 +202,25 @@
 				</div>
 			{/if}
 
+			<!-- Welcome message -->
+			<div
+				class="w-full max-w-2xl mb-4 p-4 bg-white-50 dark:bg-gray-900 border border-blue-200 dark:border-gray-900 rounded-xl text-sm text-gray-800 dark:text-gray-300 text-center"
+			>
+				<p class="font-semibold text-base mb-2 text-gray-900 dark:text-white">
+					{$i18n.t('Welcome to our Support!')}
+				</p>
+				<p class="mb-2">
+					{$i18n.t('Here you can raise requests or issues to get help.')}
+				</p>
+				<p class="mb-1">
+					{$i18n.t('If it is an operationally critical issue, please contact us by phone:')}
+				</p>
+				<p class="font-medium">
+					📞 <a href="tel:+4770157669" class="underline hover:text-blue-600">+47 70 15 76 69</a> /
+					<a href="tel:+4770157662" class="underline hover:text-blue-600">+47 70 15 76 62</a>
+				</p>
+			</div>
+
 			<div class="text-base font-normal @md:max-w-3xl w-full py-3 {atSelectedModel ? 'mt-2' : ''}">
 				<MessageInput
 					bind:this={messageInput}
@@ -212,6 +236,7 @@
 					bind:webSearchEnabled
 					bind:atSelectedModel
 					bind:showCommands
+					bind:showJiraModal
 					{toolServers}
 					{stopResponse}
 					{createMessagePair}
@@ -243,6 +268,9 @@
 						[]}
 					inputValue={prompt}
 					{onSelect}
+					onCreateTicket={() => {
+						showJiraModal = true;
+					}}
 				/>
 			</div>
 		</div>

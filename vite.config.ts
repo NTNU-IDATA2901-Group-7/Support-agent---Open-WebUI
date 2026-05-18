@@ -5,7 +5,11 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
 	plugins: [
-		sveltekit(),
+		sveltekit({
+			compilerOptions: {
+				dev: true
+			}
+		}),
 		viteStaticCopy({
 			targets: [
 				{
@@ -27,6 +31,7 @@ export default defineConfig({
 		format: 'es'
 	},
 	esbuild: {
-		pure: process.env.ENV === 'dev' ? [] : ['console.log', 'console.debug', 'console.error']
+		// pure: process.env.ENV === 'dev' ? [] : ['console.log', 'console.debug', 'console.error']
+		pure: []
 	}
 });

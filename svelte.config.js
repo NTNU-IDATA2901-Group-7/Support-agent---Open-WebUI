@@ -39,18 +39,21 @@ const config = {
 		}
 	},
 	vitePlugin: {
-		// inspector: {
-		// 	toggleKeyCombo: 'meta-shift', // Key combination to open the inspector
-		// 	holdMode: false, // Enable or disable hold mode
-		// 	showToggleButton: 'always', // Show toggle button ('always', 'active', 'never')
-		// 	toggleButtonPos: 'bottom-right' // Position of the toggle button
-		// }
+		inspect: false
 	},
-	onwarn: (warning, handler) => {
-		const { code } = warning;
-		if (code === 'css-unused-selector') return;
+	onwarn(warning) {
+		// Silently ignore these warnings
+		const ignoreList = [
+			'css-unused-selector',
+			'a11y_consider_explicit_label',
+			'element_invalid_self_closing_tag',
+			'export_let_unused',
+			'store_not_subscribe'
+		];
 
-		handler(warning);
+		if (!ignoreList.includes(warning.code)) {
+			console.warn(warning.message);
+		}
 	}
 };
 

@@ -1,0 +1,172 @@
+"""
+Support Agent MCP Server
+
+MCP protocol layer that exposes all tools to Open-WebUI, and handles tool calls by routing to the
+actual method implementations.
+
+Runs as a Streamable HTTP server (default: http://0.0.0.0:8000/mcp).
+"""
+
+# TODO: Implement better error handling
+
+import logging
+import os
+from typing import Annotated
+
+from pydantic import Field
+from mcp.server.fastmcp import FastMCP
+
+# Import tool implementations
+from open_webui.utils.mcp.jira_tools import (
+    get_jira_ticket_details_by_key,
+    get_jira_ticket_comments,
+    search_jira_tickets_by_jql,
+)
+from open_webui.utils.mcp.rag_tools import (
+    search_vector_db_for_similar_jira_tickets,
+    # TODO: implement search_documentation
+)
+
+# Import formatters
+from open_webui.utils.jira.formatters import (
+    format_similar_jira_ticket_search_results,
+    format_jira_ticket_details,
+    format_jql_search_results,
+)
+
+# ============================================================================
+# SETUP
+# ============================================================================
+
+log = logging.getLogger(__name__)
+
+MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0")
+MCP_PORT = int(os.environ.get("MCP_PORT", "8000"))
+
+server = FastMCP(
+    "support-agent-tools",
+    host=MCP_HOST,
+    port=MCP_PORT,
+)
+
+# ============================================================================
+# TOOL CATALOG - What the LLM sees
+# ============================================================================
+
+# ==================== JIRA TOOLS ====================
+
+
+@server.tool()
+async def search_jira_tickets_by_jql_tool(
+    jql_query: str,
+    maxResults: Annotated[int, Field(ge=1, le=100)] = 10,
+) -> str:
+    """
+    Search Jira tickets using JQL (Jira Query Language) for precise filtering.
+
+    When to use: User needs specific filtering by project, status, assignee, date, etc.
+    Input: JQL query string (e.g., 'project = PROJ AND status = "Open"')
+    Output: List of matching tickets with key, summary, description, and status.
+
+    Use this for structured queries. For semantic/meaning-based search,
+    use search_vector_db_for_similar_jira_tickets_tool instead.
+
+    :param jql_query: JQL query string. Examples: 'project = SR AND status = "To Do"', 'assignee = currentUser() AND priority = High', 'created >= -7d ORDER BY created DESC'
+    :param maxResults: Maximum number of tickets to return (1-20, default 10)
+    """
+    log.info(f"MCP Tool called: search_jira_tickets_by_jql")
+    result = await search_jira_tickets_by_jql(
+        jql_query=jql_query,
+        maxResults=maxResults,
+    )
+    return format_jql_search_results(result)
+
+
+@server.tool()
+async def get_jira_ticket_details_by_key_tool(ticket_key: str) -> str:
+    """
+    Get full details of a specific Jira ticket by its key.
+
+    When to use: User asks about a specific ticket (e.g., "What's the status of PROJ-123?")
+    Input: Jira ticket key like "PROJ-123"
+    Output: Full ticket details including description, status, assignee, etc.
+
+    :param ticket_key: Jira ticket key (e.g., PROJ-123)
+    """
+    log.info(f"MCP Tool called: get_jira_ticket_details_by_key")
+    result = await get_jira_ticket_details_by_key(
+        ticket_key=ticket_key,
+    )
+    return format_jira_ticket_details(result)
+
+
+@server.tool()
+async def get_jira_ticket_comments_tool(ticket_key: str) -> str:
+    """
+    Fetch the comments/solution thread for a Jira ticket.
+
+    When to use: After finding a relevant ticket via search, use this to read how
+    the issue was actually resolved. The comments contain the solution and discussion.
+    Input: Jira ticket key like "SR-123"
+    Output: List of comments with author, timestamp, and content.
+
+    :param ticket_key: Jira ticket key (e.g., SR-123)
+    """
+    log.info(f"MCP Tool called: get_jira_ticket_comments")
+    result = await get_jira_ticket_comments(ticket_key=ticket_key)
+    comments = result.get("comments", [])
+    if not comments:
+        return f"No comments found for {ticket_key}."
+
+    lines = [f"Comments for {ticket_key} ({len(comments)} comments):\n"]
+    for i, comment in enumerate(comments, 1):
+        lines.append(f"[{i}] {comment['author']} ({comment['created']}):")
+        lines.append(comment["body"])
+        lines.append("")
+    return "\n".join(lines)
+
+
+# ==================== RAG TOOLS ====================
+
+
+@server.tool()
+async def search_vector_db_for_similar_jira_tickets_tool(
+    search_text: str,
+) -> str:
+    """
+    Search for Jira tickets semantically similar to a natural language query.
+
+    IMPORTANT: search_text MUST be in Norwegian — tickets are stored in
+    Norwegian. Translate the user's problem to Norwegian before calling
+    this tool, regardless of what language the user wrote in.
+
+    Query construction guidelines:
+    - Prefer concise keyword/noun-phrase style over full sentences.
+    - Strip incidental context and question framing: customer names, dates,
+      user emotion, narrative, and help-seeking phrases ("hva gjør jeg",
+      "hjelp", "hva er årsaken", "hvorfor", "hva er galt"). Tickets describe
+      symptoms, not questions - the query should too.
+
+    When to use: User asks about existing tickets, bug reports, or similar issues.
+    Output: List of similar tickets with keys, summaries, status, and similarity scores.
+
+    Retrieval parameters are fixed server-side to keep RAG evaluation stable.
+
+    :param search_text: Concise summary of the user's problem, in Norwegian.
+    """
+    log.info(f"MCP Tool called: search_vector_db_for_similar_jira_tickets")
+    result = await search_vector_db_for_similar_jira_tickets(
+        search_text=search_text,
+    )
+    if result is None:
+        return "No similar tickets found."
+    return format_similar_jira_ticket_search_results(result)
+
+
+# ============================================================================
+# SERVER STARTUP
+# ============================================================================
+
+if __name__ == "__main__":
+    log.info(f"Starting Support Agent MCP Server on {MCP_HOST}:{MCP_PORT}")
+    server.run(transport="streamable-http")

@@ -1,0 +1,33 @@
+
+# Norwegian input — agent should respond in Norwegian
+- id: scanner_setup_norwegian
+  input: "Hvordan setter jeg opp en ny strekkodeskanner i WMS?"
+  expected_language: Norwegian
+
+- id: pick_list_issue_norwegian
+  input: "Plukklisten viser feil antall på noen varer"
+  expected_language: Norwegian
+
+- id: login_problem_norwegian
+  input: "Jeg får ikke logget inn i portalen, hva gjør jeg?"
+  expected_language: Norwegian
+
+# English input — agent should respond in English
+- id: scanner_setup_english
+  input: "How do I set up a new barcode scanner in WMS?"
+  expected_language: English
+
+- id: pick_list_issue_english
+  input: "The pick list is showing the wrong quantities"
+  expected_language: English
+
+- id: login_problem_english
+  input: "I can't log into the portal, what do I do?"
+  expected_language: English
+
+# English query containing Norwegian domain terms — agent should still respond
+# in English. Norwegian technical vocab in the query must not pull the response
+# language over.
+- id: english_with_norwegian_terms
+  input: "Can you walk me through what to do when SSCC scanning fails during varemottak?"
+  expected_language: English

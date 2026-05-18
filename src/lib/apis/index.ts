@@ -1670,7 +1670,14 @@ export interface ModelConfig {
 export interface ModelMeta {
 	toolIds: never[];
 	description?: string;
-	capabilities?: object;
+	capabilities?: {
+		vision?: boolean;
+		file_upload?: boolean;
+		web_search?: boolean;
+		image_generation?: boolean;
+		code_interpreter?: boolean;
+		[key: string]: any;
+	};
 	profile_image_url?: string;
 }
 

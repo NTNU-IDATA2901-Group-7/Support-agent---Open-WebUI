@@ -1283,3 +1283,87 @@ async def get_api_key(
         }
     else:
         raise HTTPException(404, detail=ERROR_MESSAGES.API_KEY_NOT_FOUND)
+
+
+############################
+# JIRA OAuth
+############################
+
+
+@router.get("/jira/link/authorize")
+async def jira_link_authorize(
+    request: Request,
+    user=Depends(get_current_user),
+):
+    """
+    Redirect the user to Atlassian OAuth for linking their JIRA account.
+    Called via browser navigation (GET), returns a RedirectResponse.
+    """
+    try:
+        oauth_manager = request.app.state.oauth_manager
+
+        # Store user ID in session so the callback knows this is a JIRA linking flow
+        request.session["jira_link_user_id"] = user.id
+
+        # Redirect to Atlassian OAuth (handle_login returns a RedirectResponse)
+        return await oauth_manager.handle_login(request, "atlassian")
+
+    except Exception as e:
+        log.error(f"Error generating JIRA authorization URL: {str(e)}")
+        raise HTTPException(500, detail="Failed to generate JIRA authorization URL")
+
+
+@router.get("/jira/status")
+async def jira_status(
+    request: Request,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    """
+    Check if the current user has a connected JIRA/Atlassian account
+    by looking for an Atlassian OAuthSession.
+    """
+    try:
+        session = OAuthSessions.get_session_by_provider_and_user_id(
+            "atlassian", user.id, db=db
+        )
+
+        if session:
+            return {
+                "connected": True,
+                "atlassian_account_id": session.token.get("atlassian_account_id"),
+                "cloud_id": session.token.get("cloud_id"),
+            }
+        else:
+            return {"connected": False}
+    except Exception as e:
+        log.error(f"Error checking JIRA connection status: {str(e)}")
+        raise HTTPException(500, detail="Failed to check JIRA connection status")
+
+
+@router.get("/admin/jira/connection/{user_id}")
+async def get_admin_jira_connection(
+    user_id: str,
+    request: Request,
+    user=Depends(get_admin_user),
+    db: Session = Depends(get_session),
+):
+    """
+    Admin endpoint: check if a specific user has a connected JIRA/Atlassian account.
+    """
+    try:
+        session = OAuthSessions.get_session_by_provider_and_user_id(
+            "atlassian", user_id, db=db
+        )
+
+        if session:
+            return {
+                "connected": True,
+                "atlassian_account_id": session.token.get("atlassian_account_id"),
+                "cloud_id": session.token.get("cloud_id"),
+            }
+        else:
+            return {"connected": False}
+    except Exception as e:
+        log.error(f"Error checking JIRA connection for user {user_id}: {str(e)}")
+        raise HTTPException(500, detail="Failed to check JIRA connection status")

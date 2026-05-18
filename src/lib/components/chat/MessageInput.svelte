@@ -133,6 +133,8 @@
 	let selectedValvesItemId = null;
 	let integrationsMenuCloseOnOutsideClick = true;
 
+	export let showJiraModal = false;
+
 	$: if (!showValvesModal) {
 		integrationsMenuCloseOnOutsideClick = true;
 	}
@@ -974,6 +976,18 @@
 			dropzoneElement?.removeEventListener('dragleave', onDragLeave);
 		}
 	});
+
+	async function createJiraTicket() {
+		showJiraModal = true;
+	}
+
+	function handleJiraTicketSubmit(event: CustomEvent) {
+		const ticketData = event.detail;
+		console.log('Submitting JIRA ticket:', ticketData);
+		// TODO: Send ticketData to backend API
+		toast.success($i18n.t('JIRA ticket created successfully'));
+		showJiraModal = false;
+	}
 </script>
 
 <FilesOverlay show={dragged} />
@@ -1540,6 +1554,33 @@
 											</div>
 										</IntegrationsMenu>
 									{/if}
+
+									<!-- Create Jira Ticket -->
+									<div
+										class="flex self-center w-[1px] h-4 mx-1 bg-gray-200/50 dark:bg-gray-800/50"
+									/>
+									<Tooltip content="Create Jira Ticket">
+										<button
+											id="jira-ticket-button"
+											class="bg-transparent hover:bg-gray-100 text-gray-700 dark:text-white dark:hover:bg-gray-800 rounded-full size-8 flex justify-center items-center outline-hidden focus:outline-hidden"
+											type="button"
+											on:click={() => createJiraTicket()}
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												class="size-4.5"
+											>
+												<path d="M3 7h18v3a2 2 0 100 4v3H3v-3a2 2 0 100-4V7z" />
+												<line x1="12" y1="7" x2="12" y2="17" />
+											</svg>
+										</button>
+									</Tooltip>
 
 									{#if selectedModelIds.length === 1 && $models.find((m) => m.id === selectedModelIds[0])?.has_user_valves}
 										<div class="ml-1 flex gap-1.5">

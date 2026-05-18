@@ -31,6 +31,7 @@
 		showSettings,
 		showShortcuts,
 		showChangelog,
+		showNewFeatures,
 		temporaryChatEnabled,
 		toolServers,
 		showSearch,
@@ -40,6 +41,7 @@
 	import Sidebar from '$lib/components/layout/Sidebar.svelte';
 	import SettingsModal from '$lib/components/chat/SettingsModal.svelte';
 	import ChangelogModal from '$lib/components/ChangelogModal.svelte';
+	import GuidedWalkthroughModal from '$lib/components/GuidedWalkthroughModal.svelte';
 	import AccountPending from '$lib/components/layout/Overlay/AccountPending.svelte';
 	import UpdateInfoToast from '$lib/components/layout/UpdateInfoToast.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
@@ -262,6 +264,11 @@
 			showChangelog.set($settings?.version !== $config.version);
 		}
 
+		const FEATURES_VERSION = 'jira-1.0';
+		if (!$settings?.featuresVersion || $settings.featuresVersion !== FEATURES_VERSION) {
+			showNewFeatures.set(true);
+		}
+
 		if ($user?.role === 'admin' || ($user?.permissions?.chat?.temporary ?? true)) {
 			if ($page.url.searchParams.get('temporary-chat') === 'true') {
 				temporaryChatEnabled.set(true);
@@ -303,6 +310,7 @@
 
 <SettingsModal bind:show={$showSettings} />
 <ChangelogModal bind:show={$showChangelog} />
+<GuidedWalkthroughModal bind:show={$showNewFeatures} />
 
 {#if version && compareVersion(version.latest, version.current) && ($settings?.showUpdateToast ?? true)}
 	<div class=" absolute bottom-8 right-8 z-50" in:fade={{ duration: 100 }}>

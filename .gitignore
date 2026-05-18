@@ -16,6 +16,8 @@ __pycache__/
 *$py.class
 .nvmrc
 CLAUDE.md
+mcp-architecture.md
+.deepeval/
 # C extensions
 *.so
 
@@ -310,3 +312,19 @@ dist
 cypress/videos
 cypress/screenshots
 .vscode/settings.json
+
+# -----------------
+# ADDED BY GROUP 7
+# -----------------
+
+# Local system files
+.DS_Store
+.jukit
+dooing.json
+settings.local.json
+
+# Virtual environments
+.envrc
+.direnv
+.venv
+venv

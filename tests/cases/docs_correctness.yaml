@@ -1,0 +1,108 @@
+# End-to-end correctness test cases.
+# Each case has an English prompt and a gold reference answer.
+# The LLM judge checks whether the agent's response contains the key facts.
+
+# --- Escalation & contact ---
+
+- id: escalation_phone_number
+  input: "What phone number should I call to escalate a critical incident?"
+  expected_output: >
+    The on-call phone numbers are +47 70 15 76 69 and +47 70 15 76 62.
+
+- id: major_incident_response_time
+  input: "How quickly should I expect a response when escalating to Major Incident?"
+  expected_output: >
+    Expected response is as soon as possible, normally within 15 minutes.
+    Call again if no response within 15 minutes.
+
+- id: a_critical_response_time
+  input: "I need to escalate an existing case to A-criticality. What is the expected response time?"
+  expected_output: >
+    Expected response is as soon as possible. Call again if no response
+    within 1 hour.
+
+# --- Inactive case closure ---
+
+- id: inactive_case_timeline
+  input: "What happens if a case stays inactive in Pending Customer status?"
+  expected_output: >
+    After 3 days of inactivity an automatic notification is sent to participants.
+    After 7 days total the case is normally closed. Closure is not automatic
+    but done after a case-by-case assessment. Participants are notified by email
+    and the case can be reopened by adding a comment.
+
+- id: reopen_closed_case
+  input: "How do I reopen a closed case?"
+  expected_output: >
+    Add a comment to the closed ticket. The case will reopen automatically
+    when a comment is added.
+
+# --- Priorities ---
+
+- id: priority_definitions
+  input: "What is the difference between priority A, B and C for incidents?"
+  expected_output: >
+    Priority A (Critical): Full stop or loss of critical function.
+    Priority B (Serious): Important functions affected but operations continue.
+    Priority C (Minor): Functions can be worked around, does not affect operations.
+
+- id: priority_downscaling
+  input: "Can the priority of an incident be lowered after it is reported?"
+  expected_output: >
+    Yes. When the root cause is removed or a workaround restores normal operations,
+    the priority is adjusted to reflect the actual situation. The case does not
+    lose attention; it is typically kept open in an observation period and
+    root cause work is followed up as a problem case. Priority can also be
+    increased if the impact grows.
+
+# --- Statuses ---
+
+- id: status_pending_approval
+  input: "What does the status 'Pending Customer Approval' mean?"
+  expected_output: >
+    Awaiting approval from an authorized resource at the customer before
+    further work proceeds. Solwr may request approval for work that will
+    incur costs for the customer.
+
+- id: status_pending_development
+  input: "What does the status 'Pending Development' mean?"
+  expected_output: >
+    The case is planned for execution and is in the product's backlog.
+
+# --- Issue types ---
+
+- id: issue_type_differences
+  input: "What are the different issue types I can submit in the service desk?"
+  expected_output: >
+    Incident: Something is not working as expected.
+    Change: You want a modification to the system.
+    Service Request: You need user support, advice, a meeting request,
+    or want to share important information. Not a fault.
+
+# --- User management ---
+
+- id: create_new_user
+  input: "How do I request a new user account in the service desk?"
+  expected_output: >
+    A superuser or a person with formal authority submits a service request
+    in Solwr Servicedesk. The request must include the user's email address
+    and what access levels they should have. The new user will receive an
+    email from jira@driwno.atlassian.net with login instructions.
+
+# --- Ballpark estimates ---
+
+- id: ballpark_estimate_values
+  input: "What are the ballpark estimate categories for change requests?"
+  expected_output: >
+    X-small: 2 days or less. Small: less than 1 week. Medium: less than
+    1 month. Large: more than 1 month. The estimate indicates development
+    time for one developer and is indicative, not binding.
+
+# --- RACI ---
+
+- id: raci_major_incident_escalation
+  input: "What is the full RACI matrix for escalating to a Major Incident?"
+  expected_output: >
+    The on-call responder is Responsible (R) for escalating to Major Incident.
+    The Incident Manager is Accountable (A/R). 2nd line and 3rd line are
+    Consulted (C).

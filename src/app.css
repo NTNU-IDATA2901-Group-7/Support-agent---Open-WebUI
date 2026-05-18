@@ -185,6 +185,9 @@ select {
 	@apply bg-gray-850 text-white;
 }
 
+.dark select option:hover {
+}
+
 @keyframes shimmer {
 	0% {
 		background-position: 200% 0;
@@ -806,4 +809,103 @@ body {
 
 #note-content-container .ProseMirror {
 	padding-bottom: 2rem; /* space for the bottom toolbar */
+}
+
+/* Driver.js themed to Open WebUI */
+.owui-tour-popover.driver-popover {
+	background: var(--color-gray-50, #f9f9f9) !important;
+	color: var(--color-gray-900, #171717) !important;
+	border: 1px solid var(--color-gray-200, #e3e3e3) !important;
+	border-radius: 18px !important;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2) !important;
+	font-family: 'Inter', 'Vazirmatn', sans-serif !important;
+}
+
+.dark .owui-tour-popover.driver-popover {
+	background: var(--color-gray-900, #171717) !important;
+	color: #fff !important;
+	border: 1px solid var(--color-gray-800, #333) !important;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+
+.owui-tour-popover .driver-popover-title {
+	font-family: 'Archivo', 'Vazirmatn', sans-serif !important;
+	font-weight: 600 !important;
+	font-size: 0.95rem !important;
+}
+
+.owui-tour-popover .driver-popover-description {
+	color: var(--color-gray-600, #676767) !important;
+	font-size: 0.86rem !important;
+	line-height: 1.45 !important;
+}
+
+.dark .owui-tour-popover .driver-popover-description {
+	color: var(--color-gray-300, #cdcdcd) !important;
+}
+
+.owui-tour-popover .driver-popover-footer .driver-popover-prev-btn,
+.owui-tour-popover .driver-popover-footer .driver-popover-next-btn,
+.owui-tour-popover .driver-popover-footer .driver-popover-done-btn {
+	border-radius: 9999px !important;
+	border: 1px solid var(--color-gray-200, #e3e3e3) !important;
+	font-weight: 500 !important;
+	padding: 0.38rem 0.8rem !important;
+	box-shadow: none !important;
+}
+
+.owui-tour-popover .driver-popover-footer .driver-popover-next-btn,
+.owui-tour-popover .driver-popover-footer .driver-popover-done-btn {
+	background: #000 !important;
+	color: #fff !important;
+}
+
+.owui-tour-popover .driver-popover-footer .driver-popover-prev-btn {
+	background: transparent !important;
+	color: var(--color-gray-700, #4e4e4e) !important;
+}
+
+.dark .owui-tour-popover .driver-popover-footer .driver-popover-next-btn,
+.dark .owui-tour-popover .driver-popover-footer .driver-popover-done-btn {
+	background: #fff !important;
+	color: #000 !important;
+	border-color: var(--color-gray-700, #4e4e4e) !important;
+}
+
+.dark .owui-tour-popover .driver-popover-footer .driver-popover-prev-btn {
+	color: var(--color-gray-300, #cdcdcd) !important;
+	border-color: var(--color-gray-700, #4e4e4e) !important;
+}
+
+/* Fix blurry text on Driver.js footer buttons (especially Back) */
+.owui-tour-popover .driver-popover-footer button {
+	text-shadow: none !important;
+	font-family: 'Inter', 'Vazirmatn', sans-serif !important;
+	font-size: 0.875rem !important;
+	line-height: 1.2 !important;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure Back button is crisp and not faded */
+.owui-tour-popover .driver-popover-footer .driver-popover-prev-btn {
+	text-shadow: none !important;
+	opacity: 1 !important;
+}
+
+/* Slightly lift the final walkthrough popover for better positioning. */
+.driver-popover.owui-tour-popover--new-chat {
+	transform: translateY(-12px) !important;
+}
+
+@media (max-width: 1100px) {
+	.driver-popover.owui-tour-popover--jira-button .driver-popover-arrow {
+		left: 50% !important;
+		right: auto !important;
+		transform: translateX(-50%) !important;
+	}
+}
+
+.driver-active-element {
+	border-radius: 12px !important;
 }

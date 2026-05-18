@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - dev
+      - develop
     paths:
       - 'backend/**'
       - 'pyproject.toml'
@@ -12,7 +12,7 @@ on:
   pull_request:
     branches:
       - main
-      - dev
+      - develop
     paths:
       - 'backend/**'
       - 'pyproject.toml'
@@ -40,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install black
+          pip install black==25.12.0
 
       - name: Format backend
         run: npm run format:backend

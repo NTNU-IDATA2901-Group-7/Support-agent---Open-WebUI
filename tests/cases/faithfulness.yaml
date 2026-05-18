@@ -1,0 +1,39 @@
+# Faithfulness tests — does the agent's answer stay grounded in the
+# retrieved tool-call context, without inventing facts?
+#
+# Schema: just `id` + `input`. No expected_keys — faithfulness compares
+# the agent's answer against the retrieval_context that was actually
+# returned at runtime, so no gold is needed.
+#
+# Selection: 10 customer-style queries, each hitting a distinct ticket
+# cluster — different domains, different cluster sizes.
+
+- id: missing_goods_receipt_general
+  input: "Varemottak mangler på dagens levering"
+
+- id: invoice_matching_errors
+  input: "Faktura blir matchet feil eller stopper opp på ukjent varenummer"
+
+- id: wms_picking_generation_failed
+  input: "Får ikke generert plukkrunder eller ordrer til plukk i WMS"
+
+- id: epd_not_syncing_trace
+  input: "EPD vare synkroniseres ikke inn i Trace, ligger i synkroniseringsloggen"
+
+- id: inventory_discrepancy_oms
+  input: "Feil beholdning i OMS, tilgjengelig antall stemmer ikke"
+
+- id: delivery_date_wrong_after_import
+  input: "Bulk import legger ordrer til feil leveringsdag"
+
+- id: sscc_missing
+  input: "SSCC mangler eller er ugyldig mellom WMS, TMS og RDI"
+
+- id: cancel_purchase_order
+  input: "Får ikke kansellert innkjøpsordre, status blir ikke endret"
+
+- id: duplicate_orders
+  input: "Ordrer blir duplikert / doblet og sendt flere ganger til samme kunde"
+
+- id: user_access_issues
+  input: "Innlogging feiler — tilgang ser ut til å mangle. Hva må gjøres?"

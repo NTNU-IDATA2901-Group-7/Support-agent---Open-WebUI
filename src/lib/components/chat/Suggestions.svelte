@@ -11,6 +11,7 @@
 	export let className = '';
 	export let inputValue = '';
 	export let onSelect = (e) => {};
+	export let onCreateTicket: (() => void) | null = null;
 
 	let sortedPrompts = [];
 
@@ -65,7 +66,7 @@
 </script>
 
 <div class="mb-1 flex gap-1 text-xs font-medium items-center text-gray-600 dark:text-gray-400">
-	{#if filteredPrompts.length > 0}
+	{#if filteredPrompts.length > 0 || onCreateTicket}
 		<Bolt />
 		{$i18n.t('Suggested')}
 	{:else}
@@ -82,8 +83,30 @@
 </div>
 
 <div class="h-40 w-full">
-	{#if filteredPrompts.length > 0}
-		<div role="list" class="max-h-40 overflow-auto scrollbar-none items-start {className}">
+	{#if filteredPrompts.length > 0 || onCreateTicket}
+		<div role="list" class="overflow-auto scrollbar-none items-start {className}">
+			{#if onCreateTicket}
+				<button
+					role="listitem"
+					class="waterfall flex flex-col flex-1 shrink-0 w-full justify-between
+					       px-3 py-2 rounded-xl bg-transparent hover:bg-black/5
+					       dark:hover:bg-white/5 transition group"
+					style="animation-delay: 0ms"
+					on:click={onCreateTicket}
+				>
+					<div class="flex flex-col text-left">
+						<div
+							class="font-medium dark:text-gray-300 dark:group-hover:text-gray-200 transition line-clamp-1"
+						>
+							🎫 {$i18n.t('Create ticket')}
+						</div>
+						<div class="text-xs text-gray-600 dark:text-gray-400 font-normal line-clamp-1">
+							{$i18n.t('Open a Jira support ticket')}
+						</div>
+					</div>
+				</button>
+			{/if}
+
 			{#each filteredPrompts as prompt, idx (prompt.id || `${prompt.content}-${idx}`)}
 				<!-- svelte-ignore a11y-no-interactive-element-to-noninteractive-role -->
 				<button
@@ -91,7 +114,7 @@
 					class="waterfall flex flex-col flex-1 shrink-0 w-full justify-between
 				       px-3 py-2 rounded-xl bg-transparent hover:bg-black/5
 				       dark:hover:bg-white/5 transition group"
-					style="animation-delay: {idx * 60}ms"
+					style="animation-delay: {(idx + (onCreateTicket ? 1 : 0)) * 60}ms"
 					on:click={() => onSelect({ type: 'prompt', data: prompt.content })}
 				>
 					<div class="flex flex-col text-left">
@@ -99,16 +122,16 @@
 							<div
 								class="font-medium dark:text-gray-300 dark:group-hover:text-gray-200 transition line-clamp-1"
 							>
-								{prompt.title[0]}
+								{$i18n.t(prompt.title[0])}
 							</div>
 							<div class="text-xs text-gray-600 dark:text-gray-400 font-normal line-clamp-1">
-								{prompt.title[1]}
+								{$i18n.t(prompt.title[1])}
 							</div>
 						{:else}
 							<div
 								class="font-medium dark:text-gray-300 dark:group-hover:text-gray-200 transition line-clamp-1"
 							>
-								{prompt.content}
+								{$i18n.t(prompt.content)}
 							</div>
 							<div class="text-xs text-gray-600 dark:text-gray-400 font-normal line-clamp-1">
 								{$i18n.t('Prompt')}

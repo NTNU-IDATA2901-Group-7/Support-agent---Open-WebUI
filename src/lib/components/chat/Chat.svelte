@@ -87,6 +87,7 @@
 
 	import Banner from '../common/Banner.svelte';
 	import MessageInput from '$lib/components/chat/MessageInput.svelte';
+	import JiraTicketModal from '$lib/components/layout/Overlay/JiraTicketModal.svelte';
 	import Messages from '$lib/components/chat/Messages.svelte';
 	import Navbar from '$lib/components/chat/Navbar.svelte';
 	import ChatControls from './ChatControls.svelte';
@@ -107,6 +108,7 @@
 	let controlPaneComponent;
 
 	let messageInput;
+	let showJiraModal = false;
 
 	let autoScroll = true;
 	let processing = '';
@@ -2418,19 +2420,20 @@
 		<div in:fade={{ duration: 50 }} class="w-full h-full flex flex-col">
 			{#if $selectedFolder && $selectedFolder?.meta?.background_image_url}
 				<div
-					class="absolute top-0 left-0 w-full h-full bg-cover bg-center bg-no-repeat"
-					style="background-image: url({$selectedFolder?.meta?.background_image_url})  "
-				/>
+					class="sidebar-new-chat-icon size-6 rounded-full group-hover:hidden bg-center bg-cover"
+					style="background-image: url({WEBUI_BASE_URL + '/static/solwr.png'});"
+					aria-hidden="true"
+				></div>
 
 				<div
 					class="absolute top-0 left-0 w-full h-full bg-linear-to-t from-white to-white/85 dark:from-gray-900 dark:to-gray-900/90 z-0"
 				/>
 			{:else if $settings?.backgroundImageUrl ?? $config?.license_metadata?.background_image_url ?? null}
 				<div
-					class="absolute top-0 left-0 w-full h-full bg-cover bg-center bg-no-repeat"
-					style="background-image: url({$settings?.backgroundImageUrl ??
-						$config?.license_metadata?.background_image_url})  "
-				/>
+					class="sidebar-new-chat-icon size-6 rounded-full group-hover:hidden bg-center bg-cover"
+					style="background-image: url({WEBUI_BASE_URL + '/static/solwr.png'});"
+					aria-hidden="true"
+				></div>
 
 				<div
 					class="absolute top-0 left-0 w-full h-full bg-linear-to-t from-white to-white/85 dark:from-gray-900 dark:to-gray-900/90 z-0"
@@ -2551,6 +2554,7 @@
 									bind:webSearchEnabled
 									bind:atSelectedModel
 									bind:showCommands
+									bind:showJiraModal
 									toolServers={$toolServers}
 									{generating}
 									{stopResponse}
@@ -2593,6 +2597,7 @@
 									bind:webSearchEnabled
 									bind:atSelectedModel
 									bind:showCommands
+									bind:showJiraModal
 									toolServers={$toolServers}
 									{stopResponse}
 									{createMessagePair}
@@ -2647,6 +2652,18 @@
 		</div>
 	{/if}
 </div>
+
+<JiraTicketModal
+	show={showJiraModal}
+	chatAttachments={createMessagesList(history, history.currentId).flatMap((m) => m.files ?? [])}
+	messages={createMessagesList(history, history.currentId)}
+	on:submit={() => {
+		showJiraModal = false;
+	}}
+	on:cancel={() => {
+		showJiraModal = false;
+	}}
+/>
 
 <style>
 	::-webkit-scrollbar {

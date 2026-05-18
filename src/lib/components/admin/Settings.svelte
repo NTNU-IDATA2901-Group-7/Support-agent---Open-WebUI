@@ -21,6 +21,7 @@
 	import Evaluations from './Settings/Evaluations.svelte';
 	import CodeExecution from './Settings/CodeExecution.svelte';
 	import Tools from './Settings/Tools.svelte';
+	import VectorDatabase from './Settings/VectorDatabase.svelte';
 
 	import ChartBar from '../icons/ChartBar.svelte';
 	import DocumentChartBar from '../icons/DocumentChartBar.svelte';
@@ -48,6 +49,7 @@
 			'audio',
 			'images',
 			'pipelines',
+			'vector-database',
 			'db'
 		].includes(tabFromPath)
 			? tabFromPath
@@ -237,6 +239,12 @@
 			title: 'Pipelines',
 			route: '/admin/settings/pipelines',
 			keywords: ['pipelines', 'workflows', 'filters', 'valves', 'middleware']
+		},
+		{
+			id: 'vector-database',
+			title: 'Vector Database',
+			route: '/admin/settings/vector-database',
+			keywords: ['vector', 'database', 'sync', 'embeddings', 'rag', 'retrieval']
 		},
 		{
 			id: 'db',
@@ -482,6 +490,21 @@
 								d="m10.933 19.231-7.668-4.13-1.37.739a.75.75 0 0 0 0 1.32l9.75 5.25c.221.12.489.12.71 0l9.75-5.25a.75.75 0 0 0 0-1.32l-1.37-.738-7.668 4.13a2.25 2.25 0 0 1-2.134-.001Z"
 							/>
 						</svg>
+					{:else if tab.id === 'vector-database'}
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="1.5"
+							stroke="currentColor"
+							class="size-4"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="m21 7.5-2.25-1.313M21 7.5v2.25m0-2.25-2.25 1.313M3 7.5l2.25-1.313M3 7.5l2.25 1.313M3 7.5v2.25m9 3 2.25-1.313M12 12.75l-2.25-1.313M12 12.75V15m0 6.75 2.25-1.313M12 21.75V19.5m0 2.25-2.25-1.313m0-16.875L12 2.25l2.25 1.313M21 14.25v2.25l-2.25 1.313m-13.5 0L3 16.5v-2.25"
+							/>
+						</svg>
 					{:else if tab.id === 'db'}
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -581,6 +604,12 @@
 			/>
 		{:else if selectedTab === 'pipelines'}
 			<Pipelines
+				saveHandler={() => {
+					toast.success($i18n.t('Settings saved successfully!'));
+				}}
+			/>
+		{:else if selectedTab === 'vector-database'}
+			<VectorDatabase
 				saveHandler={() => {
 					toast.success($i18n.t('Settings saved successfully!'));
 				}}
